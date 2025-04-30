@@ -18,7 +18,7 @@ function App() {
       }}
     >
       <HeaderBar setPage={setPage} />
-      <Box sx={{ mt: 0.25 }}>
+      <Box sx={{ mt: 1 }}>
         <hr style={{ width: '90%', margin: '0.1rem auto' }} />
         <hr style={{ width: '90%', margin: '0.1rem auto' }} />
         {page === 'rummy' && <Rummy />}
