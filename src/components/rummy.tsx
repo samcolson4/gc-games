@@ -30,7 +30,7 @@ function Rummy() {
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
     >
       <div>
-        <h3>Enter Player Names</h3>
+        <h2>Enter Player Names</h2>
         {players.map((name, i) => {
           if (i === 0 || players[i - 1].trim() !== "") {
             return (
@@ -55,13 +55,17 @@ function Rummy() {
 
       {players[0] && (
         <div>
-          <h3>Enter Scores</h3>
+          <h2>Enter Scores</h2>
           <table>
             <thead>
               <tr>
                 <th></th>
                 {players.map((name, i) =>
-                  name ? <th key={i}>{name}</th> : null,
+                  name ? (
+                    <th key={i}>
+                      <h3>{name}</h3>
+                    </th>
+                  ) : null,
                 )}
               </tr>
             </thead>
