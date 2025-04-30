@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 function HeaderBar({ setPage }: { setPage: (page: string) => void }) {
   const [activePage, setActivePage] = useState("rummy");
