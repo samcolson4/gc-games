@@ -111,7 +111,9 @@ function Rummy() {
               {[...Array(6)].map((_, roundIndex) => (
                 <React.Fragment key={roundIndex}>
                   <tr>
-                    <td>Round {roundIndex + 1}</td>
+                    <td style={{ textAlign: "right", paddingLeft: "0.5rem", paddingRight: "0.5rem" }}>
+                      <strong>Round {roundIndex + 1}</strong>
+                    </td>
                     {players.map((name, playerIndex) =>
                       name ? (
                         <td key={playerIndex}>
@@ -133,7 +135,7 @@ function Rummy() {
                   </tr>
                   {players.some((_, playerIndex) => scores[playerIndex][roundIndex].trim() !== "") && (
                     <tr>
-                      <td>Scores on the doors</td>
+                      <td style={{ textAlign: "right", paddingLeft: "0.5rem" }} colSpan={1}>Scores on the doors</td>
                       {players.map((name, playerIndex) =>
                         name ? (
                           <td key={playerIndex}>
