@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import React from "react";
 
 function Rummy() {
@@ -9,10 +9,24 @@ function Rummy() {
       .map(() => Array(6).fill("")),
   );
 
+  useEffect(() => {
+    const storedPlayers = localStorage.getItem("rummyPlayers");
+    const storedScores = localStorage.getItem("rummyScores");
+
+    if (storedPlayers) {
+      setPlayers(JSON.parse(storedPlayers));
+    }
+
+    if (storedScores) {
+      setScores(JSON.parse(storedScores));
+    }
+  }, []);
+
   const handleNameChange = (index: number, name: string) => {
     const newPlayers = [...players];
     newPlayers[index] = name;
     setPlayers(newPlayers);
+    localStorage.setItem("rummyPlayers", JSON.stringify(newPlayers));
   };
 
   const handleScoreChange = (
@@ -23,12 +37,36 @@ function Rummy() {
     const newScores = scores.map((row) => [...row]);
     newScores[playerIndex][roundIndex] = score;
     setScores(newScores);
+    localStorage.setItem("rummyScores", JSON.stringify(newScores));
+  };
+
+  const clearOnlyScores = () => {
+    const emptyScores = Array(6).fill(null).map(() => Array(6).fill(""));
+    setScores(emptyScores);
+    localStorage.removeItem("rummyScores");
+  };
+
+  const clearPlayersAndScores = () => {
+    const emptyPlayers = Array(6).fill("");
+    const emptyScores = Array(6).fill(null).map(() => Array(6).fill(""));
+    setPlayers(emptyPlayers);
+    setScores(emptyScores);
+    localStorage.removeItem("rummyPlayers");
+    localStorage.removeItem("rummyScores");
   };
 
   return (
     <div
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
     >
+      <div style={{ marginBottom: "1rem" }}>
+        <button onClick={clearOnlyScores} style={{ marginRight: "1rem" }}>
+          Clear Scores
+        </button>
+        <button onClick={clearPlayersAndScores}>
+          Clear Players &amp; Scores
+        </button>
+      </div>
       <div>
         <h2>Enter Player Names</h2>
         {players.map((name, i) => {
