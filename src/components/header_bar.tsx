@@ -15,10 +15,7 @@ function HeaderBar({ setPage }: { setPage: (page: string) => void }) {
               setPage("rummy");
               setActivePage("rummy");
             }}
-            style={{
-              textDecoration: activePage === "rummy" ? "underline" : "none",
-              textUnderlineOffset: "0.3rem",
-            }}
+            className={activePage === "rummy" ? "nav-link active" : "nav-link"}
           >
             Rummy
           </a>
@@ -29,10 +26,7 @@ function HeaderBar({ setPage }: { setPage: (page: string) => void }) {
               setPage("golf");
               setActivePage("golf");
             }}
-            style={{
-              textDecoration: activePage === "golf" ? "underline" : "none",
-              textUnderlineOffset: "0.3rem",
-            }}
+            className={activePage === "golf" ? "nav-link active" : "nav-link"}
           >
             Golf
           </a>

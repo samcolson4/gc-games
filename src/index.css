@@ -104,3 +104,16 @@ input {
   -webkit-appearance: none;
   -moz-appearance: none;
 }
+
+.nav-link {
+  text-decoration: none;
+  text-underline-offset: 0.3rem;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.nav-link.active {
+  text-decoration: underline;
+}
