@@ -25,8 +25,9 @@ export function updateScore(
 }
 
 export function clearScores(scoreKey: string) {
-  localStorage.setItem(scoreKey, JSON.stringify([]));
-  return [];
+  const emptyScores: string[][] = Array(6).fill(null).map(() => Array(6).fill(""));
+  localStorage.setItem(scoreKey, JSON.stringify(emptyScores));
+  return emptyScores;
 }
 
 export function clearPlayersAndScores(playerKey: string, scoreKey: string) {

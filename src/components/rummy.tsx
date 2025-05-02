@@ -114,7 +114,7 @@ function Rummy() {
                         <td key={playerIndex}>
                           <input
                             type="number"
-                            value={scores[playerIndex]?.[roundIndex] || ""}
+                            value={scores[roundIndex]?.[playerIndex] || ""}
                             onChange={(e) =>
                               handleScoreChange(playerIndex, roundIndex, e.target.value)
                             }
@@ -128,14 +128,14 @@ function Rummy() {
                       ) : null
                     )}
                   </tr>
-                  {players.some((_, playerIndex) => scores[playerIndex][roundIndex].trim() !== "") && (
+                  {players.some((_, playerIndex) => scores[roundIndex][playerIndex].trim() !== "") && (
                     <tr>
                       <td style={{ textAlign: "right", paddingLeft: "0.5rem" }} colSpan={1}>Scores on the doors</td>
                       {players.map((name, playerIndex) =>
                         name ? (
                           <td key={playerIndex}>
                             {
-                              calculateCumulativeScore(scores[playerIndex], roundIndex)
+                              calculateCumulativeScore(scores.map(row => row[playerIndex]), roundIndex)
                             }
                           </td>
                         ) : null
