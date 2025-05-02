@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { calculateCumulativeScore, clearPlayersAndScores, clearScores, getStoredData, updatePlayerName, updateScore } from "../utils/scoreHelpers";
 
 function Golf() {
   const [players, setPlayers] = useState<string[]>(Array(6).fill(""));
@@ -6,24 +7,15 @@ function Golf() {
   const [numRounds, setNumRounds] = useState<number>(1);
 
   useEffect(() => {
-    const storedPlayers = localStorage.getItem("golfPlayers");
-    const storedScores = localStorage.getItem("golfScores");
-
-    if (storedPlayers) {
-      setPlayers(JSON.parse(storedPlayers));
-    }
-
-    if (storedScores) {
-      setScores(JSON.parse(storedScores));
-      setNumRounds(JSON.parse(storedScores).length);
-    }
+    const { players: storedPlayers, scores: storedScores } = getStoredData("golfPlayers", "golfScores");
+    setPlayers(storedPlayers);
+    setScores(storedScores);
+    setNumRounds(storedScores.length || 1);
   }, []);
 
   const handleNameChange = (index: number, name: string) => {
-    const newPlayers = [...players];
-    newPlayers[index] = name;
+    const newPlayers = updatePlayerName(players, index, name, "golfPlayers");
     setPlayers(newPlayers);
-    localStorage.setItem("golfPlayers", JSON.stringify(newPlayers));
   };
 
   const handleScoreChange = (
@@ -31,13 +23,13 @@ function Golf() {
     roundIndex: number,
     score: string
   ) => {
-    const updatedScores = [...scores];
+    // Ensure scores array has enough rounds
+    let updatedScores = [...scores];
     while (updatedScores.length <= roundIndex) {
       updatedScores.push(Array(6).fill(""));
     }
-    updatedScores[roundIndex][playerIndex] = score;
+    updatedScores = updateScore(updatedScores, playerIndex, roundIndex, score, "golfScores");
     setScores(updatedScores);
-    localStorage.setItem("golfScores", JSON.stringify(updatedScores));
   };
 
   const addRound = () => {
@@ -45,17 +37,8 @@ function Golf() {
   };
 
   const clearOnlyScores = () => {
-    setScores([]);
-    localStorage.removeItem("golfScores");
-    setNumRounds(1);
-  };
-
-  const clearPlayersAndScores = () => {
-    const emptyPlayers = Array(6).fill("");
-    setPlayers(emptyPlayers);
-    setScores([]);
-    localStorage.removeItem("golfPlayers");
-    localStorage.removeItem("golfScores");
+    const emptyScores = clearScores("golfScores");
+    setScores(emptyScores);
     setNumRounds(1);
   };
 
@@ -65,7 +48,14 @@ function Golf() {
         <button onClick={clearOnlyScores} style={{ marginRight: "1rem" }}>
           Clear Scores
         </button>
-        <button onClick={clearPlayersAndScores}>
+        <button
+          onClick={() => {
+            const { emptyPlayers, emptyScores } = clearPlayersAndScores("golfPlayers", "golfScores");
+            setPlayers(emptyPlayers);
+            setScores(emptyScores);
+            setNumRounds(1);
+          }}
+        >
           Clear Players & Scores
         </button>
       </div>
@@ -140,13 +130,10 @@ function Golf() {
                       {players.map((name, playerIndex) =>
                         name ? (
                           <td key={playerIndex}>
-                            {scores
-                              .slice(0, roundIndex + 1)
-                              .reduce(
-                                (acc, round) =>
-                                  acc + (parseInt(round[playerIndex]) || 0),
-                                0
-                              )}
+                            {calculateCumulativeScore(
+                              scores.map(round => round[playerIndex]),
+                              roundIndex
+                            )}
                           </td>
                         ) : null
                       )}

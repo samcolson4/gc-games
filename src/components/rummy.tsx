@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
 import React from "react";
+import { updatePlayerName,
+  updateScore,
+  clearScores,
+  calculateCumulativeScore,
+  getStoredData,
+  clearPlayersAndScores} from "../utils/scoreHelpers";
 
 function Rummy() {
   const [players, setPlayers] = useState<string[]>(Array(6).fill(""));
@@ -10,23 +16,18 @@ function Rummy() {
   );
 
   useEffect(() => {
-    const storedPlayers = localStorage.getItem("rummyPlayers");
-    const storedScores = localStorage.getItem("rummyScores");
+    const { players: initialPlayers, scores: initialScores } = getStoredData("rummyPlayers", "rummyScores");
+    setPlayers(initialPlayers);
 
-    if (storedPlayers) {
-      setPlayers(JSON.parse(storedPlayers));
-    }
-
-    if (storedScores) {
-      setScores(JSON.parse(storedScores));
-    }
+    const validScores = Array(6).fill(null).map((_, i) =>
+      Array(6).fill("").map((_, j) => initialScores?.[i]?.[j] || "")
+    );
+    setScores(validScores);
   }, []);
 
   const handleNameChange = (index: number, name: string) => {
-    const newPlayers = [...players];
-    newPlayers[index] = name;
+    const newPlayers = updatePlayerName(players, index, name, "rummyPlayers");
     setPlayers(newPlayers);
-    localStorage.setItem("rummyPlayers", JSON.stringify(newPlayers));
   };
 
   const handleScoreChange = (
@@ -34,25 +35,13 @@ function Rummy() {
     roundIndex: number,
     score: string,
   ) => {
-    const newScores = scores.map((row) => [...row]);
-    newScores[playerIndex][roundIndex] = score;
+    const newScores = updateScore(scores, playerIndex, roundIndex, score, "rummyScores");
     setScores(newScores);
-    localStorage.setItem("rummyScores", JSON.stringify(newScores));
   };
 
   const clearOnlyScores = () => {
-    const emptyScores = Array(6).fill(null).map(() => Array(6).fill(""));
+    const emptyScores = clearScores("rummyScores");
     setScores(emptyScores);
-    localStorage.removeItem("rummyScores");
-  };
-
-  const clearPlayersAndScores = () => {
-    const emptyPlayers = Array(6).fill("");
-    const emptyScores = Array(6).fill(null).map(() => Array(6).fill(""));
-    setPlayers(emptyPlayers);
-    setScores(emptyScores);
-    localStorage.removeItem("rummyPlayers");
-    localStorage.removeItem("rummyScores");
   };
 
   return (
@@ -63,7 +52,13 @@ function Rummy() {
         <button onClick={clearOnlyScores} style={{ marginRight: "1rem" }}>
           Clear Scores
         </button>
-        <button onClick={clearPlayersAndScores}>
+        <button
+          onClick={() => {
+            const { emptyPlayers, emptyScores } = clearPlayersAndScores("rummyPlayers", "rummyScores");
+            setPlayers(emptyPlayers);
+            setScores(emptyScores);
+          }}
+        >
           Clear Players &amp; Scores
         </button>
       </div>
@@ -119,7 +114,7 @@ function Rummy() {
                         <td key={playerIndex}>
                           <input
                             type="number"
-                            value={scores[playerIndex][roundIndex]}
+                            value={scores[playerIndex]?.[roundIndex] || ""}
                             onChange={(e) =>
                               handleScoreChange(playerIndex, roundIndex, e.target.value)
                             }
@@ -140,9 +135,7 @@ function Rummy() {
                         name ? (
                           <td key={playerIndex}>
                             {
-                              scores[playerIndex]
-                                .slice(0, roundIndex + 1)
-                                .reduce((acc, val) => acc + (parseInt(val) || 0), 0)
+                              calculateCumulativeScore(scores[playerIndex], roundIndex)
                             }
                           </td>
                         ) : null
