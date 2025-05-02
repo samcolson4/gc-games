@@ -117,3 +117,40 @@ input {
 .nav-link.active {
   text-decoration: underline;
 }
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2.5em;
+  }
+
+  a {
+    font-size: 0.9rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  button {
+    padding: 0.4em 0.8em;
+    font-size: 0.9em;
+  }
+
+  input {
+    width: 100%;
+    font-size: 1em;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 2em;
+  }
+
+  a {
+    font-size: 0.8rem;
+  }
+
+  button {
+    padding: 0.3em 0.6em;
+    font-size: 0.8em;
+  }
+}
