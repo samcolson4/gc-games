@@ -44,6 +44,43 @@ function Rummy() {
     setScores(emptyScores);
   };
 
+  // Emoji ranking row for each round
+  const getEmojiRankingRow = (roundIndex: number) => {
+    const fullEmojis = ["🟩", "🟦", "🟪", "🟨", "🟧", "🟥"];
+    const activePlayersCount = players.filter(name => name).length;
+    const emojis = fullEmojis.slice(0, activePlayersCount);
+    const cumulativeScores: { index: number; score: number }[] = players
+      .map((_, i) => ({
+        index: i,
+        score: calculateCumulativeScore(scores.map(row => row[i]), roundIndex),
+      }))
+      .filter(({ score }) => !isNaN(score))
+      .sort((a, b) => a.score - b.score);
+
+    const emojiMap: Record<number, string> = {};
+    let rank = 0;
+    for (let i = 0; i < cumulativeScores.length;) {
+      const currentScore = cumulativeScores[i].score;
+      const scoreGroup = cumulativeScores.slice(i).filter(r => r.score === currentScore);
+      const emoji = emojis[rank] || emojis[emojis.length - 1];
+      scoreGroup.forEach(entry => {
+        emojiMap[entry.index] = emoji;
+      });
+      i += scoreGroup.length;
+      rank++;
+    }
+
+    return (
+      <tr>
+        <td style={{ textAlign: "right", paddingLeft: "0.5rem" }}>Rankings</td>
+        {players.map((name, i) =>
+          name ? (
+            <td key={i}>{emojiMap[i] || ""}</td>
+          ) : null
+        )}
+      </tr>
+    );
+  };
   return (
     <div
       style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
@@ -129,18 +166,21 @@ function Rummy() {
                     )}
                   </tr>
                   {players.some((_, playerIndex) => scores[roundIndex][playerIndex].trim() !== "") && (
-                    <tr>
-                      <td style={{ textAlign: "right", paddingLeft: "0.5rem" }} colSpan={1}>Scores on the doors</td>
-                      {players.map((name, playerIndex) =>
-                        name ? (
-                          <td key={playerIndex}>
-                            {
-                              calculateCumulativeScore(scores.map(row => row[playerIndex]), roundIndex)
-                            }
-                          </td>
-                        ) : null
-                      )}
-                    </tr>
+                    <>
+                      <tr>
+                        <td style={{ textAlign: "right", paddingLeft: "0.5rem" }} colSpan={1}>Scores on the doors</td>
+                        {players.map((name, playerIndex) =>
+                          name ? (
+                            <td key={playerIndex}>
+                              {
+                                calculateCumulativeScore(scores.map(row => row[playerIndex]), roundIndex)
+                              }
+                            </td>
+                          ) : null
+                        )}
+                      </tr>
+                      {getEmojiRankingRow(roundIndex)}
+                    </>
                   )}
                 </React.Fragment>
               ))}
