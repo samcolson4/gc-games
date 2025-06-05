@@ -1,8 +1,16 @@
 function NewZealandVideo() {
   return (
-    <div style={{ padding: "1rem" }}>
-      <h1>Special Page</h1>
-      <p>This is a hidden page accessible via URL.</p>
+    <div>
+      <br></br>
+      <iframe
+        src="https://player.vimeo.com/video/1090882752"
+        width="1080"
+        height="360"
+        allow="autoplay; fullscreen; picture-in-picture"
+        style={{ border: "none" }}
+        allowFullScreen
+        title="New Zealand Video"
+      ></iframe>
     </div>
   );
 }
