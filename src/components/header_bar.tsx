@@ -1,35 +1,38 @@
-import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
-function HeaderBar({ setPage }: { setPage: (page: string) => void }) {
-  const [activePage, setActivePage] = useState("rummy");
+function HeaderBar() {
+  const location = useLocation();
+  const activePage = location.pathname === "/" ? "rummy" : location.pathname.slice(1);
 
   return (
     <>
       <div>
         <h1>Goodridge Colson Games</h1>
         <nav style={{ textAlign: "center", marginTop: "10px" }}>
-          <a
-            href="#rummy"
-            onClick={(e) => {
-              e.preventDefault();
-              setPage("rummy");
-              setActivePage("rummy");
-            }}
+          <Link
+            to="/"
             className={activePage === "rummy" ? "nav-link active" : "nav-link"}
           >
             Rummy
-          </a>
-          <a
-            href="#golf"
-            onClick={(e) => {
-              e.preventDefault();
-              setPage("golf");
-              setActivePage("golf");
-            }}
+          </Link>
+          <Link
+            to="/golf"
             className={activePage === "golf" ? "nav-link active" : "nav-link"}
           >
             Golf
-          </a>
+          </Link>
+          <Link
+            to="/suburb"
+            className={activePage === "suburb" ? "nav-link active" : "nav-link"}
+          >
+            Suburb
+          </Link>
+          <Link
+            to="/nz"
+            className={activePage === "nz" ? "nav-link active" : "nav-link"}
+          >
+            NZ
+          </Link>
         </nav>
       </div>
     </>
