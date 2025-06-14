@@ -6,6 +6,7 @@ import Rummy from './components/rummy';
 import Golf from './components/golf';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import NewZealandVideo from './components/nz';
+import Suburb from './components/suburb';
 
 function App() {
   const [page, setPage] = useState('rummy');
@@ -27,6 +28,7 @@ function App() {
           <Routes>
             <Route path="/" element={page === 'rummy' ? <Rummy /> : <Golf />} />
             <Route path="/nz" element={<NewZealandVideo />} />
+            <Route path="/suburb" element={<Suburb />} />
           </Routes>
         </Box>
       </Box>
