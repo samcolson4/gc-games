@@ -106,9 +106,9 @@ function Golf() {
     roundIndex: number,
     score: string
   ) => {
-    // Validate score
+    // Validate score (allow negative scores)
     const numScore = parseInt(score);
-    if (score && (isNaN(numScore) || numScore < 0 || numScore > MAX_SCORE)) {
+    if (score && (isNaN(numScore) || numScore > MAX_SCORE)) {
       return;
     }
 
@@ -214,7 +214,6 @@ function Golf() {
                         <td key={player.id} style={styles.td}>
                           <input
                             type="number"
-                            min="0"
                             max={MAX_SCORE}
                             value={scores[roundIndex]?.[player.id] || ""}
                             onChange={(e) =>
