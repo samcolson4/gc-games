@@ -33,9 +33,11 @@ function Golf() {
       borderRadius: "4px",
       cursor: "pointer",
       transition: "background-color 0.3s",
+      fontSize: "1rem",
+      minHeight: "44px", // Better touch target
     },
     input: {
-      padding: "0.5rem",
+      padding: "0.75rem",
       margin: "0.5rem",
       backgroundColor: "white",
       color: "black",
@@ -44,24 +46,68 @@ function Golf() {
       width: "100%",
       maxWidth: "200px",
       boxSizing: "border-box" as const,
+      fontSize: "1rem",
+      minHeight: "44px", // Better touch target
     },
     table: {
       borderCollapse: "collapse" as const,
       width: "100%",
       marginTop: "1rem",
-      tableLayout: "fixed" as const,
+      minWidth: "600px", // Minimum width for table
     },
     th: {
-      padding: "0.5rem",
+      padding: "0.75rem 0.5rem",
       backgroundColor: "#f5f5f5",
       border: "1px solid #ddd",
       wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      top: 0,
+      zIndex: 10,
+      minWidth: "120px",
     },
     td: {
-      padding: "0.5rem",
+      padding: "0.75rem 0.5rem",
       border: "1px solid #ddd",
       textAlign: "center" as const,
       wordBreak: "break-word" as const,
+      minWidth: "120px",
+    },
+    tdFirst: {
+      padding: "0.75rem 0.5rem",
+      border: "1px solid #ddd",
+      textAlign: "center" as const,
+      wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      left: 0,
+      backgroundColor: "white",
+      zIndex: 5,
+      minWidth: "100px",
+      fontWeight: "bold" as const,
+    },
+    tdSticky: {
+      padding: "0.75rem 0.5rem",
+      border: "1px solid #ddd",
+      textAlign: "center" as const,
+      wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      bottom: 0,
+      backgroundColor: "#fff9c4",
+      zIndex: 8,
+      fontWeight: "bold" as const,
+      minWidth: "120px",
+    },
+    tdFirstSticky: {
+      padding: "0.75rem 0.5rem",
+      border: "1px solid #ddd",
+      textAlign: "center" as const,
+      wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      left: 0,
+      bottom: 0,
+      backgroundColor: "#fff9c4",
+      zIndex: 9,
+      fontWeight: "bold" as const,
+      minWidth: "100px",
     },
     header: {
       marginBottom: "2rem",
@@ -69,8 +115,11 @@ function Golf() {
     },
     tableContainer: {
       width: "100%",
-      maxWidth: "800px",
+      maxWidth: "100%",
       margin: "0 auto",
+      overflowX: "auto" as const,
+      WebkitOverflowScrolling: "touch" as const,
+      position: "relative" as const,
     },
     playerInputs: {
       width: "100%",
@@ -84,6 +133,19 @@ function Golf() {
       display: "flex",
       justifyContent: "center",
       flexWrap: "wrap" as const,
+    },
+    scoreInput: {
+      padding: "0.75rem",
+      margin: "0.25rem",
+      backgroundColor: "white",
+      color: "black",
+      border: "1px solid #ccc",
+      borderRadius: "4px",
+      width: "100%",
+      boxSizing: "border-box" as const,
+      fontSize: "1rem",
+      minHeight: "44px",
+      textAlign: "center" as const,
     },
   };
 
@@ -181,70 +243,87 @@ function Golf() {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: "100px" }}></th>
+                <th style={{ ...styles.th, ...styles.tdFirst, backgroundColor: "#f5f5f5" }}></th>
                 {players.map((player) =>
                   player.name ? (
                     <th key={player.id} style={styles.th}>
-                      <h3 style={{ margin: 0 }}>{player.name}</h3>
+                      <h3 style={{ margin: 0, fontSize: "1rem" }}>{player.name}</h3>
                     </th>
                   ) : null
                 )}
               </tr>
             </thead>
             <tbody>
-              {[...Array(numRounds)].map((_, roundIndex) => (
-                <React.Fragment key={roundIndex}>
-                  <tr>
-                    <td style={styles.td}>
-                      Round {roundIndex + 1}
-                      <button
-                        onClick={() => deleteRound(roundIndex)}
-                        style={{
-                          ...styles.button,
-                          padding: "0.25rem 0.5rem",
-                          marginLeft: "0.5rem",
-                          backgroundColor: "#f44336",
-                        }}
-                      >
-                        ×
-                      </button>
-                    </td>
-                    {players.map((player) =>
-                      player.name ? (
-                        <td key={player.id} style={styles.td}>
-                          <input
-                            type="number"
-                            max={MAX_SCORE}
-                            value={scores[roundIndex]?.[player.id] || ""}
-                            onChange={(e) =>
-                              handleScoreChange(player.id, roundIndex, e.target.value)
-                            }
-                            style={styles.input}
-                          />
-                        </td>
-                      ) : null
-                    )}
-                  </tr>
-                  {players.some(
-                    (player) =>
-                      scores[roundIndex]?.[player.id]?.trim() !== ""
-                  ) && (
+              {[...Array(numRounds)].map((_, roundIndex) => {
+                const hasScores = players.some(
+                  (player) =>
+                    scores[roundIndex]?.[player.id]?.trim() !== ""
+                );
+                // Find the last round with scores
+                let lastRoundWithScores = -1;
+                for (let i = numRounds - 1; i >= 0; i--) {
+                  if (players.some((player) => scores[i]?.[player.id]?.trim() !== "")) {
+                    lastRoundWithScores = i;
+                    break;
+                  }
+                }
+                const isLastRound = roundIndex === lastRoundWithScores;
+
+                return (
+                  <React.Fragment key={roundIndex}>
                     <tr>
-                      <td style={styles.td}>Total Score</td>
+                      <td style={styles.tdFirst}>
+                        Round {roundIndex + 1}
+                        <button
+                          onClick={() => deleteRound(roundIndex)}
+                          style={{
+                            ...styles.button,
+                            padding: "0.25rem 0.5rem",
+                            marginLeft: "0.5rem",
+                            backgroundColor: "#f44336",
+                            fontSize: "0.9rem",
+                            minHeight: "auto",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </td>
                       {players.map((player) =>
                         player.name ? (
                           <td key={player.id} style={styles.td}>
-                            {calculateCumulativeScore(
-                              scores.map(round => round[player.id]),
-                              roundIndex
-                            )}
+                            <input
+                              type="number"
+                              max={MAX_SCORE}
+                              value={scores[roundIndex]?.[player.id] || ""}
+                              onChange={(e) =>
+                                handleScoreChange(player.id, roundIndex, e.target.value)
+                              }
+                              style={styles.scoreInput}
+                            />
                           </td>
                         ) : null
                       )}
                     </tr>
-                  )}
-                </React.Fragment>
-              ))}
+                    {hasScores && (
+                      <tr>
+                        <td style={isLastRound ? styles.tdFirstSticky : styles.tdFirst}>
+                          Total Score
+                        </td>
+                        {players.map((player) =>
+                          player.name ? (
+                            <td key={player.id} style={isLastRound ? styles.tdSticky : styles.td}>
+                              {calculateCumulativeScore(
+                                scores.map(round => round[player.id]),
+                                roundIndex
+                              )}
+                            </td>
+                          ) : null
+                        )}
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
           <button onClick={addRound} style={{ ...styles.button, marginTop: "1rem" }}>

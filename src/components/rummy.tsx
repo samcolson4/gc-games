@@ -34,9 +34,11 @@ function Rummy() {
       borderRadius: "4px",
       cursor: "pointer",
       transition: "background-color 0.3s",
+      fontSize: "1rem",
+      minHeight: "44px", // Better touch target
     },
     input: {
-      padding: "0.5rem",
+      padding: "0.75rem",
       margin: "0.5rem",
       backgroundColor: "white",
       color: "black",
@@ -45,24 +47,68 @@ function Rummy() {
       width: "100%",
       maxWidth: "200px",
       boxSizing: "border-box" as const,
+      fontSize: "1rem",
+      minHeight: "44px", // Better touch target
     },
     table: {
       borderCollapse: "collapse" as const,
       width: "100%",
       marginTop: "1rem",
-      tableLayout: "fixed" as const,
+      minWidth: "600px", // Minimum width for table
     },
     th: {
-      padding: "0.5rem",
+      padding: "0.75rem 0.5rem",
       backgroundColor: "#f5f5f5",
       border: "1px solid #ddd",
       wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      top: 0,
+      zIndex: 10,
+      minWidth: "120px",
     },
     td: {
-      padding: "0.5rem",
+      padding: "0.75rem 0.5rem",
       border: "1px solid #ddd",
       textAlign: "center" as const,
       wordBreak: "break-word" as const,
+      minWidth: "120px",
+    },
+    tdFirst: {
+      padding: "0.75rem 0.5rem",
+      border: "1px solid #ddd",
+      textAlign: "center" as const,
+      wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      left: 0,
+      backgroundColor: "white",
+      zIndex: 5,
+      minWidth: "100px",
+      fontWeight: "bold" as const,
+    },
+    tdSticky: {
+      padding: "0.75rem 0.5rem",
+      border: "1px solid #ddd",
+      textAlign: "center" as const,
+      wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      bottom: 0,
+      backgroundColor: "#fff9c4",
+      zIndex: 8,
+      fontWeight: "bold" as const,
+      minWidth: "120px",
+    },
+    tdFirstSticky: {
+      padding: "0.75rem 0.5rem",
+      border: "1px solid #ddd",
+      textAlign: "center" as const,
+      wordBreak: "break-word" as const,
+      position: "sticky" as const,
+      left: 0,
+      bottom: 0,
+      backgroundColor: "#fff9c4",
+      zIndex: 9,
+      fontWeight: "bold" as const,
+      minWidth: "100px",
     },
     header: {
       marginBottom: "2rem",
@@ -70,8 +116,11 @@ function Rummy() {
     },
     tableContainer: {
       width: "100%",
-      maxWidth: "800px",
+      maxWidth: "100%",
       margin: "0 auto",
+      overflowX: "auto" as const,
+      WebkitOverflowScrolling: "touch" as const,
+      position: "relative" as const,
     },
     playerInputs: {
       width: "100%",
@@ -85,6 +134,19 @@ function Rummy() {
       display: "flex",
       justifyContent: "center",
       flexWrap: "wrap" as const,
+    },
+    scoreInput: {
+      padding: "0.75rem",
+      margin: "0.25rem",
+      backgroundColor: "white",
+      color: "black",
+      border: "1px solid #ccc",
+      borderRadius: "4px",
+      width: "100%",
+      boxSizing: "border-box" as const,
+      fontSize: "1rem",
+      minHeight: "44px",
+      textAlign: "center" as const,
     },
   };
 
@@ -165,7 +227,7 @@ function Rummy() {
 
     return (
       <tr>
-        <td style={styles.td}>Rankings</td>
+        <td style={styles.tdFirst}>Rankings</td>
         {players.map((name, i) =>
           name ? (
             <td key={i} style={styles.td}>{emojiMap[i] || ""}</td>
@@ -248,57 +310,72 @@ function Rummy() {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={{ ...styles.th, width: "100px" }}></th>
+                <th style={{ ...styles.th, ...styles.tdFirst, backgroundColor: "#f5f5f5" }}></th>
                 {players.map((name, i) =>
                   name ? (
                     <th key={i} style={styles.th}>
-                      <h3 style={{ margin: 0 }}>{name}</h3>
+                      <h3 style={{ margin: 0, fontSize: "1rem" }}>{name}</h3>
                     </th>
                   ) : null,
                 )}
               </tr>
             </thead>
             <tbody>
-              {[...Array(6)].map((_, roundIndex) => (
-                <React.Fragment key={roundIndex}>
-                  <tr>
-                    <td style={styles.td}>
-                      <strong>Round {roundIndex + 1}</strong>
-                    </td>
-                    {players.map((name, playerIndex) =>
-                      name ? (
-                        <td key={playerIndex} style={styles.td}>
-                          <input
-                            type="number"
-                            value={scores[roundIndex]?.[playerIndex] || ""}
-                            onChange={(e) =>
-                              handleScoreChange(playerIndex, roundIndex, e.target.value)
-                            }
-                            style={styles.input}
-                          />
-                        </td>
-                      ) : null
-                    )}
-                  </tr>
-                  {players.some((_, playerIndex) => scores[roundIndex][playerIndex].trim() !== "") && (
-                    <>
-                      <tr>
-                        <td style={styles.td}>Scores on the doors</td>
-                        {players.map((name, playerIndex) =>
-                          name ? (
-                            <td key={playerIndex} style={styles.td}>
-                              {
-                                calculateCumulativeScore(scores.map(row => row[playerIndex]), roundIndex)
+              {[...Array(6)].map((_, roundIndex) => {
+                const hasScores = players.some((_, playerIndex) => scores[roundIndex]?.[playerIndex]?.trim() !== "");
+                // Find the last round with scores
+                let lastRoundWithScores = -1;
+                for (let i = 5; i >= 0; i--) {
+                  if (players.some((_, playerIndex) => scores[i]?.[playerIndex]?.trim() !== "")) {
+                    lastRoundWithScores = i;
+                    break;
+                  }
+                }
+                const isLastRound = roundIndex === lastRoundWithScores;
+
+                return (
+                  <React.Fragment key={roundIndex}>
+                    <tr>
+                      <td style={styles.tdFirst}>
+                        <strong>Round {roundIndex + 1}</strong>
+                      </td>
+                      {players.map((name, playerIndex) =>
+                        name ? (
+                          <td key={playerIndex} style={styles.td}>
+                            <input
+                              type="number"
+                              value={scores[roundIndex]?.[playerIndex] || ""}
+                              onChange={(e) =>
+                                handleScoreChange(playerIndex, roundIndex, e.target.value)
                               }
-                            </td>
-                          ) : null
-                        )}
-                      </tr>
-                      {getEmojiRankingRow(roundIndex)}
-                    </>
-                  )}
-                </React.Fragment>
-              ))}
+                              style={styles.scoreInput}
+                            />
+                          </td>
+                        ) : null
+                      )}
+                    </tr>
+                    {hasScores && (
+                      <>
+                        <tr>
+                          <td style={isLastRound ? styles.tdFirstSticky : styles.tdFirst}>
+                            Scores on the doors
+                          </td>
+                          {players.map((name, playerIndex) =>
+                            name ? (
+                              <td key={playerIndex} style={isLastRound ? styles.tdSticky : styles.td}>
+                                {
+                                  calculateCumulativeScore(scores.map(row => row[playerIndex]), roundIndex)
+                                }
+                              </td>
+                            ) : null
+                          )}
+                        </tr>
+                        {getEmojiRankingRow(roundIndex)}
+                      </>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
           <RankingKey />
