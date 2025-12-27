@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import React from "react";
 import {
   updatePlayerName,
   updateScore,
@@ -315,7 +314,7 @@ function RummyMobile() {
 
                 {/* Players in Round */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {activePlayers.map((playerName, playerIndex) => {
+                  {activePlayers.map((playerName) => {
                     const originalIndex = players.indexOf(playerName);
                     const score = roundScores[originalIndex] || "";
                     const cumulativeScore = hasScores
