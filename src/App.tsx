@@ -2,6 +2,7 @@ import './App.css'
 import Box from '@mui/material/Box';
 import HeaderBar from './components/header_bar'
 import Rummy from './components/rummy';
+import RummyMobile from './components/rummy_mobile';
 import Golf from './components/golf';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import NewZealandVideo from './components/nz';
@@ -24,6 +25,7 @@ function App() {
           <hr style={{ width: '90%', margin: '0.1rem auto' }} />
           <Routes>
             <Route path="/" element={<Rummy />} />
+            <Route path="/rummy-mobile" element={<RummyMobile />} />
             <Route path="/golf" element={<Golf />} />
             <Route path="/nz" element={<NewZealandVideo />} />
             <Route path="/suburb" element={<Suburb />} />
