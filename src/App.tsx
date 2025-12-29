@@ -4,6 +4,7 @@ import HeaderBar from './components/header_bar'
 import Rummy from './components/rummy';
 import RummyMobile from './components/rummy_mobile';
 import Golf from './components/golf';
+import MexicanTrain from './components/mexican_train';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import NewZealandVideo from './components/nz';
 import Suburb from './components/suburb';
@@ -63,6 +64,7 @@ function AppContent() {
           <Route path="/" element={<ResponsiveRummy />} />
           <Route path="/rummy-mobile" element={<RummyMobile />} />
           <Route path="/golf" element={<Golf />} />
+          <Route path="/mexican-train" element={<MexicanTrain />} />
           <Route path="/nz" element={<NewZealandVideo />} />
           <Route path="/suburb" element={<Suburb />} />
         </Routes>

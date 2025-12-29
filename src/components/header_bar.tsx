@@ -22,6 +22,12 @@ function HeaderBar() {
             Golf
           </Link>
           <Link
+            to="/mexican-train"
+            className={activePage === "mexican-train" ? "nav-link active" : "nav-link"}
+          >
+            Mexican Train
+          </Link>
+          <Link
             to="/suburb"
             className={activePage === "suburb" ? "nav-link active" : "nav-link"}
           >
