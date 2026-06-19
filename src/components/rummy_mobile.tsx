@@ -6,71 +6,96 @@ import {
   calculateCumulativeScore,
   getStoredData,
   clearPlayersAndScores,
+  finishGame,
+  getHistory,
+  deleteHistory,
+  clearHistory,
+  getPlayerTotals,
+  GameHistoryRecord,
 } from "../utils/scoreHelpers";
+import { colors, fonts } from "../styles/tokens";
+import { editorialStyles } from "../styles/editorialStyles";
+import { GameHistorySection } from "./editorial/ScorecardShared";
+
+const PLAYER_KEY = "rummyPlayers";
+const SCORE_KEY = "rummyScores";
+const HISTORY_KEY = "rummyHistory";
+const ROUNDS = 6;
 
 function RummyMobile() {
   const [players, setPlayers] = useState<string[]>(Array(6).fill(""));
   const [scores, setScores] = useState<string[][]>(
-    Array(6)
-      .fill(null)
-      .map(() => Array(6).fill("")),
+    Array(ROUNDS).fill(null).map(() => Array(6).fill(""))
   );
+  const [history, setHistory] = useState<GameHistoryRecord[]>([]);
+  const [draftPlayer, setDraftPlayer] = useState("");
 
   useEffect(() => {
     const { players: initialPlayers, scores: initialScores } = getStoredData(
-      "rummyPlayers",
-      "rummyScores",
+      PLAYER_KEY,
+      SCORE_KEY
     );
     setPlayers(initialPlayers);
-
-    const validScores = Array(6)
-      .fill(null)
-      .map((_, i) =>
-        Array(6)
-          .fill("")
-          .map((_, j) => initialScores?.[i]?.[j] || ""),
-      );
+    const validScores = Array(ROUNDS).fill(null).map((_, i) =>
+      Array(6).fill("").map((_, j) => initialScores?.[i]?.[j] || "")
+    );
     setScores(validScores);
+    setHistory(getHistory(HISTORY_KEY));
   }, []);
 
   const handleNameChange = (index: number, name: string) => {
-    const newPlayers = updatePlayerName(players, index, name, "rummyPlayers");
+    const newPlayers = updatePlayerName(players, index, name, PLAYER_KEY);
     setPlayers(newPlayers);
   };
 
   const handleScoreChange = (
     playerIndex: number,
     roundIndex: number,
-    score: string,
+    score: string
   ) => {
-    const newScores = updateScore(
-      scores,
-      playerIndex,
-      roundIndex,
-      score,
-      "rummyScores",
-    );
+    const newScores = updateScore(scores, playerIndex, roundIndex, score, SCORE_KEY);
     setScores(newScores);
   };
 
+  const addPlayer = () => {
+    const name = draftPlayer.trim();
+    if (!name) return;
+    const emptyIndex = players.findIndex((p) => p.trim() === "");
+    if (emptyIndex === -1) return;
+    handleNameChange(emptyIndex, name);
+    setDraftPlayer("");
+  };
+
   const clearOnlyScores = () => {
-    const emptyScores = clearScores("rummyScores");
+    const emptyScores = clearScores(SCORE_KEY, ROUNDS, 6);
     setScores(emptyScores);
   };
 
-  // Get emoji for player ranking in a round
+  const handleClearAll = () => {
+    const { emptyPlayers } = clearPlayersAndScores(PLAYER_KEY, SCORE_KEY);
+    setPlayers(emptyPlayers);
+    setScores(Array(ROUNDS).fill(null).map(() => Array(6).fill("")));
+  };
+
+  const handleFinishGame = () => {
+    const { history: newHistory, clearedScores } = finishGame(
+      HISTORY_KEY,
+      SCORE_KEY,
+      players,
+      scores
+    );
+    setHistory(newHistory);
+    setScores(clearedScores);
+  };
+
   const getPlayerEmoji = (playerIndex: number, roundIndex: number) => {
     const emojis = ["🟩", "🟦", "🟪", "🟨", "🟧", "🟥"];
-
     const playerScores = players
       .map((_, i) => ({
         index: i,
-        score: calculateCumulativeScore(
-          scores.map((row) => row[i]),
-          roundIndex,
-        ),
+        score: calculateCumulativeScore(scores.map((row) => row[i]), roundIndex),
       }))
-      .filter(({ score }) => !isNaN(score))
+      .filter(({ index }) => players[index].trim() !== "")
       .sort((a, b) => a.score - b.score);
 
     if (playerScores.length === 0) return "";
@@ -95,7 +120,6 @@ function RummyMobile() {
     if (currentGroup.some((p) => p.index === playerIndex)) {
       return emojis[emojiIndex];
     }
-
     return "";
   };
 
@@ -107,8 +131,10 @@ function RummyMobile() {
 
   const activePlayers = players.filter((name) => name.trim() !== "");
   const hasAnyScores = scores.some((round) =>
-    round.some((score) => score.trim() !== ""),
+    round.some((score) => score.trim() !== "")
   );
+  const standings = getPlayerTotals(players, scores);
+  const leaderTotal = standings[0]?.total;
 
   return (
     <div
@@ -116,148 +142,145 @@ function RummyMobile() {
         width: "100%",
         maxWidth: "100vw",
         minHeight: "100vh",
-        backgroundColor: "#f5f5f5",
-        padding: "0.75rem",
+        backgroundColor: colors.paper,
+        padding: "16px",
         boxSizing: "border-box",
         overflowX: "hidden",
       }}
     >
-      {/* Header */}
-      <div
-        style={{
-          textAlign: "center",
-          marginBottom: "1rem",
-          paddingTop: "0.5rem",
-        }}
-      >
-        <h1 style={{ margin: "0 0 0.5rem 0", fontSize: "1.75rem" }}>Rummy</h1>
-      </div>
-
-      {/* Action Buttons */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          marginBottom: "1rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={clearOnlyScores}
+      <div style={{ textAlign: "center", marginBottom: 16, paddingTop: 8 }}>
+        <div style={editorialStyles.eyebrow}>The Scorecard</div>
+        <h1
           style={{
-            flex: "1",
-            minWidth: "140px",
-            padding: "0.75rem",
-            backgroundColor: "#4CAF50",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "0.9rem",
-            fontWeight: "600",
-            cursor: "pointer",
-            minHeight: "44px",
+            fontFamily: fonts.serif,
+            fontWeight: 700,
+            fontSize: 32,
+            margin: "8px 0 4px",
+            color: colors.ink,
           }}
         >
+          Rummy
+        </h1>
+        <p style={{ ...editorialStyles.dek, fontSize: 15, margin: 0 }}>
+          {activePlayers.length} players · lowest score wins
+        </p>
+      </div>
+
+      {standings.length > 0 && (
+        <div
+          style={{
+            borderTop: `2px solid ${colors.ink}`,
+            borderBottom: `1px solid ${colors.rule}`,
+            padding: "14px 0",
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              ...editorialStyles.eyebrow,
+              color: colors.accent,
+              fontSize: 10,
+              marginBottom: 6,
+            }}
+          >
+            Standings
+          </div>
+          {standings.slice(0, 3).map((s, i) => (
+            <div
+              key={s.name}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "6px 0",
+                fontFamily: fonts.serif,
+                fontSize: 16,
+              }}
+            >
+              <span>{i + 1}. {s.name}</span>
+              <span
+                style={{
+                  fontFamily: fonts.numbers,
+                  fontWeight: 700,
+                  color: s.total === leaderTotal ? colors.accent : colors.body,
+                }}
+              >
+                {s.total}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <button onClick={clearOnlyScores} style={{ ...editorialStyles.btnClear, flex: 1, minWidth: 120 }}>
           Clear Scores
         </button>
         <button
-          onClick={() => {
-            const { emptyPlayers, emptyScores } = clearPlayersAndScores(
-              "rummyPlayers",
-              "rummyScores",
-            );
-            setPlayers(emptyPlayers);
-            setScores(emptyScores);
-          }}
-          style={{
-            flex: "1",
-            minWidth: "140px",
-            padding: "0.75rem",
-            backgroundColor: "#f44336",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "0.9rem",
-            fontWeight: "600",
-            cursor: "pointer",
-            minHeight: "44px",
-          }}
+          onClick={handleClearAll}
+          style={{ ...editorialStyles.btnDanger, flex: 1, minWidth: 120 }}
         >
           Clear All
         </button>
       </div>
 
-      {/* Player Names Section */}
       <div
         style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "1rem",
-          marginBottom: "1rem",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          borderTop: `1px solid ${colors.rule}`,
+          paddingTop: 16,
+          marginBottom: 16,
         }}
       >
-        <h2
-          style={{
-            margin: "0 0 0.75rem 0",
-            fontSize: "1.25rem",
-            fontWeight: "600",
-          }}
-        >
-          Players
-        </h2>
+        <div style={{ ...editorialStyles.eyebrow, marginBottom: 10 }}>Players</div>
         {players.map((name, i) => {
           if (i === 0 || players[i - 1].trim() !== "") {
             return (
-              <div key={i} style={{ marginBottom: "0.5rem" }}>
-                <input
-                  type="text"
-                  placeholder={`Player ${i + 1}`}
-                  value={name}
-                  onChange={(e) => handleNameChange(i, e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem",
-                    fontSize: "1rem",
-                    border: "1px solid #ddd",
-                    borderRadius: "8px",
-                    boxSizing: "border-box",
-                    minHeight: "44px",
-                  }}
-                />
-              </div>
+              <input
+                key={i}
+                type="text"
+                placeholder={`Player ${i + 1}`}
+                value={name}
+                onChange={(e) => handleNameChange(i, e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  fontSize: 16,
+                  fontFamily: fonts.franklin,
+                  border: `1px solid ${colors.inputBorder}`,
+                  borderRadius: 0,
+                  boxSizing: "border-box",
+                  minHeight: 44,
+                  marginBottom: 8,
+                }}
+              />
             );
           }
           return null;
         })}
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <input
+            type="text"
+            value={draftPlayer}
+            onChange={(e) => setDraftPlayer(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+            placeholder="Add player"
+            style={{ ...editorialStyles.addPlayerInput, flex: 1, width: "auto" }}
+          />
+          <button onClick={addPlayer} style={editorialStyles.btnOutline}>
+            Add
+          </button>
+        </div>
       </div>
 
-      {/* Rounds Section */}
       {activePlayers.length > 0 && (
         <div>
-          <h2
-            style={{
-              margin: "0 0 0.75rem 0",
-              fontSize: "1.25rem",
-              fontWeight: "600",
-              paddingLeft: "0.25rem",
-            }}
-          >
-            Rounds
-          </h2>
-
-          {[...Array(6)].map((_, roundIndex) => {
+          <div style={{ ...editorialStyles.eyebrow, marginBottom: 12 }}>Rounds</div>
+          {[...Array(ROUNDS)].map((_, roundIndex) => {
             const roundScores = scores[roundIndex] || [];
             const hasScores = roundScores.some((score) => score.trim() !== "");
 
-            // Find the last round with scores
             let lastRoundWithScores = -1;
-            for (let i = 5; i >= 0; i--) {
-              if (
-                players.some(
-                  (_, playerIndex) => scores[i]?.[playerIndex]?.trim() !== "",
-                )
-              ) {
+            for (let i = ROUNDS - 1; i >= 0; i--) {
+              if (players.some((_, pi) => scores[i]?.[pi]?.trim() !== "")) {
                 lastRoundWithScores = i;
                 break;
               }
@@ -268,193 +291,151 @@ function RummyMobile() {
               <div
                 key={roundIndex}
                 style={{
-                  backgroundColor: "white",
-                  borderRadius: "12px",
-                  padding: "1rem",
-                  marginBottom: "1rem",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  border:
-                    isLastRound && hasScores
-                      ? "2px solid #4CAF50"
-                      : "1px solid #e0e0e0",
+                  borderTop: isLastRound && hasScores ? `2px solid ${colors.ink}` : `1px solid ${colors.rule}`,
+                  padding: "14px 0",
+                  marginBottom: 4,
                 }}
               >
-                {/* Round Header */}
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "0.75rem",
-                    paddingBottom: "0.5rem",
-                    borderBottom: "2px solid #f0f0f0",
+                    marginBottom: 10,
                   }}
                 >
-                  <h3
+                  <span
                     style={{
-                      margin: 0,
-                      fontSize: "1.1rem",
-                      fontWeight: "600",
+                      fontFamily: fonts.franklin,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: colors.ink,
                     }}
                   >
                     Round {roundIndex + 1}
-                  </h3>
-                  {hasScores && (
+                  </span>
+                  {hasScores && isLastRound && (
                     <span
                       style={{
-                        fontSize: "0.85rem",
-                        color: "#666",
-                        fontWeight: "500",
+                        fontFamily: fonts.franklin,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: colors.accent,
                       }}
                     >
-                      {isLastRound && "Current"}
+                      Current
                     </span>
                   )}
                 </div>
 
-                {/* Players in Round */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {activePlayers.map((playerName) => {
-                    const originalIndex = players.indexOf(playerName);
-                    const score = roundScores[originalIndex] || "";
-                    const cumulativeScore = hasScores
-                      ? calculateCumulativeScore(
-                          scores.map((row) => row[originalIndex]),
-                          roundIndex,
-                        )
-                      : null;
-                    const emoji = hasScores
-                      ? getPlayerEmoji(originalIndex, roundIndex)
-                      : "";
+                {activePlayers.map((playerName) => {
+                  const originalIndex = players.indexOf(playerName);
+                  const score = roundScores[originalIndex] || "";
+                  const cumulativeScore = hasScores
+                    ? calculateCumulativeScore(
+                        scores.map((row) => row[originalIndex]),
+                        roundIndex
+                      )
+                    : null;
+                  const emoji = hasScores
+                    ? getPlayerEmoji(originalIndex, roundIndex)
+                    : "";
 
-                    return (
+                  return (
+                    <div
+                      key={originalIndex}
+                      style={{
+                        padding: "10px 0",
+                        borderBottom: `1px solid ${colors.ruleFaint}`,
+                      }}
+                    >
                       <div
-                        key={originalIndex}
                         style={{
                           display: "flex",
-                          flexDirection: "column",
-                          gap: "0.25rem",
-                          padding: "0.75rem",
-                          backgroundColor: "#fafafa",
-                          borderRadius: "8px",
-                          border: "1px solid #e0e0e0",
+                          justifyContent: "space-between",
+                          marginBottom: 6,
                         }}
                       >
-                        {/* Player Name and Emoji */}
+                        <span
+                          style={{
+                            fontFamily: fonts.serif,
+                            fontWeight: 700,
+                            fontSize: 16,
+                            color: colors.ink,
+                          }}
+                        >
+                          {playerName}
+                        </span>
+                        {emoji && <span style={{ fontSize: 18 }}>{emoji}</span>}
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="—"
+                        value={score}
+                        onChange={(e) =>
+                          handleScoreChange(originalIndex, roundIndex, e.target.value)
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          fontSize: 20,
+                          fontFamily: fonts.numbers,
+                          border: "none",
+                          borderBottom: `1px solid ${colors.ruleFaint}`,
+                          textAlign: "right",
+                          backgroundColor: colors.paper,
+                          boxSizing: "border-box",
+                          minHeight: 44,
+                        }}
+                      />
+                      {cumulativeScore !== null && (
                         <div
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "0.25rem",
+                            marginTop: 6,
+                            fontFamily: fonts.franklin,
+                            fontSize: 12,
+                            color: colors.meta3,
                           }}
                         >
+                          <span>Scores on the doors</span>
                           <span
                             style={{
-                              fontWeight: "600",
-                              fontSize: "0.95rem",
-                              color: "#333",
+                              fontFamily: fonts.numbers,
+                              fontWeight: 700,
+                              fontSize: 16,
+                              color: colors.body,
                             }}
                           >
-                            {playerName}
+                            {cumulativeScore}
                           </span>
-                          {emoji && (
-                            <span style={{ fontSize: "1.2rem" }}>{emoji}</span>
-                          )}
                         </div>
-
-                        {/* Score Input */}
-                        <input
-                          type="number"
-                          placeholder="Score"
-                          value={score}
-                          onChange={(e) =>
-                            handleScoreChange(
-                              originalIndex,
-                              roundIndex,
-                              e.target.value,
-                            )
-                          }
-                          style={{
-                            width: "100%",
-                            padding: "0.625rem",
-                            fontSize: "1rem",
-                            border: "1px solid #ccc",
-                            borderRadius: "6px",
-                            boxSizing: "border-box",
-                            minHeight: "44px",
-                            textAlign: "center",
-                            backgroundColor: "white",
-                          }}
-                        />
-
-                        {/* Cumulative Score */}
-                        {cumulativeScore !== null && (
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginTop: "0.25rem",
-                              paddingTop: "0.5rem",
-                              borderTop: "1px solid #e0e0e0",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: "0.85rem",
-                                color: "#666",
-                                fontWeight: "500",
-                              }}
-                            >
-                              Total:
-                            </span>
-                            <span
-                              style={{
-                                fontSize: "1rem",
-                                fontWeight: "600",
-                                color: "#333",
-                              }}
-                            >
-                              {cumulativeScore}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Ranking Legend */}
       {hasAnyScores && (
         <div
           style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            padding: "1rem",
-            marginTop: "1rem",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            marginTop: 20,
+            paddingTop: 16,
+            borderTop: `1px solid ${colors.rule}`,
           }}
         >
-          <h3
-            style={{
-              margin: "0 0 0.75rem 0",
-              fontSize: "1.1rem",
-              fontWeight: "600",
-            }}
-          >
-            Rankings
-          </h3>
+          <div style={{ ...editorialStyles.eyebrow, marginBottom: 10 }}>Rankings</div>
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(2, 1fr)",
-              gap: "0.5rem",
+              gap: 8,
             }}
           >
             {["🟩", "🟦", "🟪", "🟨", "🟧", "🟥"].map((emoji, index) => (
@@ -463,11 +444,13 @@ function RummyMobile() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "0.5rem",
-                  fontSize: "0.9rem",
+                  gap: 6,
+                  fontFamily: fonts.franklin,
+                  fontSize: 13,
+                  color: colors.meta,
                 }}
               >
-                <span style={{ fontSize: "1.2rem" }}>{emoji}</span>
+                <span>{emoji}</span>
                 <span>
                   {index === 0
                     ? "Best"
@@ -481,8 +464,22 @@ function RummyMobile() {
         </div>
       )}
 
-      {/* Bottom padding for scroll */}
-      <div style={{ height: "2rem" }} />
+      <div style={{ marginTop: 20 }}>
+        <button
+          onClick={handleFinishGame}
+          style={{ ...editorialStyles.btnPrimary, width: "100%" }}
+        >
+          Finish &amp; Log Game
+        </button>
+      </div>
+
+      <GameHistorySection
+        history={history}
+        onDelete={(id) => setHistory(deleteHistory(HISTORY_KEY, id))}
+        onClearHistory={() => setHistory(clearHistory(HISTORY_KEY))}
+      />
+
+      <div style={{ height: 32 }} />
     </div>
   );
 }

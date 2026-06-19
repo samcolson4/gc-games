@@ -1,336 +1,514 @@
 import React, { useState, useEffect } from "react";
-import { calculateCumulativeScore, clearPlayersAndScores, clearScores, getStoredData, updatePlayerName, updateScore } from "../utils/scoreHelpers";
+import {
+  calculateCumulativeScore,
+  clearPlayersAndScores,
+  clearScores,
+  getStoredData,
+  updatePlayerName,
+  updateScore,
+  getPlayerTotals,
+  finishGame,
+  getHistory,
+  deleteHistory,
+  clearHistory,
+  GameHistoryRecord,
+} from "../utils/scoreHelpers";
+import { colors, fonts } from "../styles/tokens";
+import { editorialStyles } from "../styles/editorialStyles";
+import {
+  StandingsRail,
+  GameHistorySection,
+  useNarrowLayout,
+} from "./editorial/ScorecardShared";
 
-interface Player {
-  name: string;
-  id: number;
-}
-
+const PLAYER_KEY = "golfPlayers";
+const SCORE_KEY = "golfScores";
+const HISTORY_KEY = "golfHistory";
 const MAX_PLAYERS = 6;
-const MAX_SCORE = 200; // Reasonable maximum golf score
+const MAX_SCORE = 200;
 
 function Golf() {
-  const [players, setPlayers] = useState<Player[]>(Array(MAX_PLAYERS).fill(null).map((_, i) => ({ name: "", id: i })));
+  const [players, setPlayers] = useState<string[]>(Array(MAX_PLAYERS).fill(""));
   const [scores, setScores] = useState<string[][]>([]);
-  const [numRounds, setNumRounds] = useState<number>(1);
-
-  const styles = {
-    container: {
-      display: "flex",
-      flexDirection: "column" as const,
-      alignItems: "center",
-      padding: "1rem",
-      maxWidth: "100%",
-      margin: "0 auto",
-      boxSizing: "border-box" as const,
-    },
-    button: {
-      padding: "0.5rem 1rem",
-      margin: "0.5rem",
-      backgroundColor: "#4CAF50",
-      color: "white",
-      border: "none",
-      borderRadius: "4px",
-      cursor: "pointer",
-      transition: "background-color 0.3s",
-      fontSize: "1rem",
-      minHeight: "44px", // Better touch target
-    },
-    input: {
-      padding: "0.75rem",
-      margin: "0.5rem",
-      backgroundColor: "white",
-      color: "black",
-      border: "1px solid #ccc",
-      borderRadius: "4px",
-      width: "100%",
-      maxWidth: "200px",
-      boxSizing: "border-box" as const,
-      fontSize: "1rem",
-      minHeight: "44px", // Better touch target
-    },
-    table: {
-      borderCollapse: "collapse" as const,
-      width: "100%",
-      marginTop: "1rem",
-      minWidth: "600px", // Minimum width for table
-    },
-    th: {
-      padding: "0.75rem 0.5rem",
-      backgroundColor: "#f5f5f5",
-      border: "1px solid #ddd",
-      wordBreak: "break-word" as const,
-      position: "sticky" as const,
-      top: 0,
-      zIndex: 10,
-      minWidth: "120px",
-    },
-    td: {
-      padding: "0.75rem 0.5rem",
-      border: "1px solid #ddd",
-      textAlign: "center" as const,
-      wordBreak: "break-word" as const,
-      minWidth: "120px",
-    },
-    tdFirst: {
-      padding: "0.75rem 0.5rem",
-      border: "1px solid #ddd",
-      textAlign: "center" as const,
-      wordBreak: "break-word" as const,
-      position: "sticky" as const,
-      left: 0,
-      backgroundColor: "white",
-      zIndex: 5,
-      minWidth: "100px",
-      fontWeight: "bold" as const,
-    },
-    tdSticky: {
-      padding: "0.75rem 0.5rem",
-      border: "1px solid #ddd",
-      textAlign: "center" as const,
-      wordBreak: "break-word" as const,
-      position: "sticky" as const,
-      bottom: 0,
-      backgroundColor: "#fff9c4",
-      zIndex: 8,
-      fontWeight: "bold" as const,
-      minWidth: "120px",
-    },
-    tdFirstSticky: {
-      padding: "0.75rem 0.5rem",
-      border: "1px solid #ddd",
-      textAlign: "center" as const,
-      wordBreak: "break-word" as const,
-      position: "sticky" as const,
-      left: 0,
-      bottom: 0,
-      backgroundColor: "#fff9c4",
-      zIndex: 9,
-      fontWeight: "bold" as const,
-      minWidth: "100px",
-    },
-    header: {
-      marginBottom: "2rem",
-      textAlign: "center" as const,
-    },
-    tableContainer: {
-      width: "100%",
-      maxWidth: "100%",
-      margin: "0 auto",
-      overflowX: "auto" as const,
-      WebkitOverflowScrolling: "touch" as const,
-      position: "relative" as const,
-    },
-    playerInputs: {
-      width: "100%",
-      maxWidth: "800px",
-      margin: "0 auto",
-    },
-    buttonContainer: {
-      width: "100%",
-      maxWidth: "800px",
-      margin: "0 auto 2rem auto",
-      display: "flex",
-      justifyContent: "center",
-      flexWrap: "wrap" as const,
-    },
-    scoreInput: {
-      padding: "0.75rem",
-      margin: "0.25rem",
-      backgroundColor: "white",
-      color: "black",
-      border: "1px solid #ccc",
-      borderRadius: "4px",
-      width: "100%",
-      boxSizing: "border-box" as const,
-      fontSize: "1rem",
-      minHeight: "44px",
-      textAlign: "center" as const,
-    },
-  };
+  const [numRounds, setNumRounds] = useState(1);
+  const [history, setHistory] = useState<GameHistoryRecord[]>([]);
+  const [draftPlayer, setDraftPlayer] = useState("");
+  const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const isNarrow = useNarrowLayout();
 
   useEffect(() => {
-    const { players: storedPlayers, scores: storedScores } = getStoredData("golfPlayers", "golfScores");
-    setPlayers(storedPlayers.map((name: string, i: number) => ({ name, id: i })));
-    setScores(storedScores);
+    const { players: storedPlayers, scores: storedScores } = getStoredData(PLAYER_KEY, SCORE_KEY);
+    setPlayers(storedPlayers);
+    setScores(storedScores.length ? storedScores : [Array(MAX_PLAYERS).fill("")]);
     setNumRounds(storedScores.length || 1);
+    setHistory(getHistory(HISTORY_KEY));
   }, []);
 
+  const activePlayers = players
+    .map((name, index) => ({ name: name.trim(), index }))
+    .filter((p) => p.name !== "");
+
+  const activeCount = activePlayers.length;
+  const roundsPlayed = scores.filter((round) =>
+    round.some((s) => s.trim() !== "")
+  ).length;
+
+  const standings = getPlayerTotals(players, scores).map((p) => ({
+    name: p.name,
+    total: p.total,
+  }));
+  const leaderTotal = standings[0]?.total;
+
   const handleNameChange = (index: number, name: string) => {
-    const newPlayers = [...players];
-    newPlayers[index] = { ...newPlayers[index], name };
-    updatePlayerName(newPlayers.map(p => p.name), index, name, "golfPlayers");
+    const newPlayers = updatePlayerName(players, index, name, PLAYER_KEY);
     setPlayers(newPlayers);
   };
 
-  const handleScoreChange = (
-    playerIndex: number,
-    roundIndex: number,
-    score: string
-  ) => {
-    // Validate score (allow negative scores)
+  const handleScoreChange = (playerIndex: number, roundIndex: number, score: string) => {
     const numScore = parseInt(score);
-    if (score && (isNaN(numScore) || numScore > MAX_SCORE)) {
-      return;
-    }
+    if (score && (isNaN(numScore) || numScore > MAX_SCORE)) return;
 
     let updatedScores = [...scores];
     while (updatedScores.length <= roundIndex) {
       updatedScores.push(Array(MAX_PLAYERS).fill(""));
     }
-    updatedScores = updateScore(updatedScores, playerIndex, roundIndex, score, "golfScores");
+    updatedScores = updateScore(updatedScores, playerIndex, roundIndex, score, SCORE_KEY);
     setScores(updatedScores);
   };
 
+  const addPlayer = () => {
+    const name = draftPlayer.trim();
+    if (!name) return;
+    const emptyIndex = players.findIndex((p) => p.trim() === "");
+    if (emptyIndex === -1) return;
+    handleNameChange(emptyIndex, name);
+    setDraftPlayer("");
+  };
+
+  const removePlayer = (index: number) => {
+    const newPlayers = [...players];
+    newPlayers[index] = "";
+    localStorage.setItem(PLAYER_KEY, JSON.stringify(newPlayers));
+    const newScores = scores.map((row) => {
+      const updated = [...row];
+      updated[index] = "";
+      return updated;
+    });
+    localStorage.setItem(SCORE_KEY, JSON.stringify(newScores));
+    setPlayers(newPlayers);
+    setScores(newScores);
+  };
+
   const addRound = () => {
-    setNumRounds(numRounds + 1);
+    setNumRounds((n) => n + 1);
+    setScores((prev) => [...prev, Array(MAX_PLAYERS).fill("")]);
+  };
+
+  const removeLastRound = () => {
+    if (numRounds <= 1) return;
+    const newScores = scores.slice(0, -1);
+    setScores(newScores);
+    setNumRounds(numRounds - 1);
+    localStorage.setItem(SCORE_KEY, JSON.stringify(newScores));
   };
 
   const deleteRound = (roundIndex: number) => {
-    const newScores = scores.filter((_, index) => index !== roundIndex);
+    if (numRounds <= 1) return;
+    const newScores = scores.filter((_, i) => i !== roundIndex);
     setScores(newScores);
     setNumRounds(numRounds - 1);
+    localStorage.setItem(SCORE_KEY, JSON.stringify(newScores));
   };
 
   const clearOnlyScores = () => {
-    const emptyScores = clearScores("golfScores");
+    const emptyScores = clearScores(SCORE_KEY, 1, MAX_PLAYERS);
     setScores(emptyScores);
     setNumRounds(1);
   };
 
-  return (
-    <div style={styles.container}>
-      <div style={styles.buttonContainer}>
-        <button onClick={clearOnlyScores} style={styles.button}>
-          Clear Scores
-        </button>
-        <button
-          onClick={() => {
-            const { emptyPlayers, emptyScores } = clearPlayersAndScores("golfPlayers", "golfScores");
-            setPlayers(emptyPlayers.map((name, i) => ({ name, id: i })));
-            setScores(emptyScores);
-            setNumRounds(1);
-          }}
-          style={styles.button}
-        >
-          Clear Players & Scores
-        </button>
-      </div>
+  const handleClearAll = () => {
+    const { emptyPlayers } = clearPlayersAndScores(PLAYER_KEY, SCORE_KEY);
+    setPlayers(emptyPlayers);
+    setScores([Array(MAX_PLAYERS).fill("")]);
+    setNumRounds(1);
+  };
 
-      <div style={styles.playerInputs}>
-        <h2>Enter Player Names</h2>
-        {players.map((player, i) => {
-          if (i === 0 || players[i - 1].name.trim() !== "") {
-            return (
-              <div key={player.id}>
+  const handleFinishGame = () => {
+    const { history: newHistory, clearedScores } = finishGame(
+      HISTORY_KEY,
+      SCORE_KEY,
+      players,
+      scores
+    );
+    setHistory(newHistory);
+    setScores(clearedScores.length ? clearedScores : [Array(MAX_PLAYERS).fill("")]);
+    setNumRounds(clearedScores.length || 1);
+  };
+
+  const gridCols = `minmax(58px, auto) repeat(${activeCount || 1}, minmax(80px, 1fr))`;
+
+  return (
+    <div style={editorialStyles.pageContainer}>
+      <div style={editorialStyles.twoColumnGrid(isNarrow)}>
+        <section>
+          <div style={editorialStyles.eyebrow}>The Scorecard</div>
+          <h2 style={editorialStyles.gameTitle}>Golf</h2>
+          <p style={editorialStyles.dek}>
+            {activeCount} player{activeCount !== 1 ? "s" : ""} · {roundsPlayed} round{roundsPlayed !== 1 ? "s" : ""} played · lowest score wins
+          </p>
+
+          {activeCount === 0 ? (
+            <div
+              style={{
+                marginTop: 36,
+                borderTop: `2px solid ${colors.ink}`,
+                paddingTop: 48,
+                textAlign: "center",
+              }}
+            >
+              <div style={editorialStyles.eyebrow}>No game in progress</div>
+              <h3
+                style={{
+                  fontFamily: fonts.serif,
+                  fontWeight: 700,
+                  fontSize: 30,
+                  margin: "12px 0 26px",
+                  color: colors.ink,
+                }}
+              >
+                Enter player names to begin
+              </h3>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 10,
+                  flexWrap: "wrap",
+                }}
+              >
                 <input
                   type="text"
-                  placeholder={`Player ${i + 1}`}
-                  value={player.name}
-                  onChange={(e) => handleNameChange(i, e.target.value)}
-                  style={styles.input}
+                  value={draftPlayer}
+                  onChange={(e) => setDraftPlayer(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+                  placeholder="Player 1"
+                  style={{
+                    ...editorialStyles.addPlayerInput,
+                    fontSize: 16,
+                    width: 260,
+                    textAlign: "center",
+                    padding: "13px 16px",
+                  }}
                 />
+                <button
+                  onClick={addPlayer}
+                  style={{ ...editorialStyles.btnPrimary, padding: "14px 22px" }}
+                >
+                  Add Player
+                </button>
               </div>
-            );
-          }
-          return null;
-        })}
-      </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 28, borderTop: `2px solid ${colors.ink}` }}>
+              <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
+                <div
+                  style={{
+                    fontFamily: fonts.franklin,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: colors.faintLabel,
+                    padding: "12px 8px 11px 0",
+                    borderBottom: `1px solid ${colors.ink}`,
+                    alignSelf: "end",
+                  }}
+                >
+                  Round
+                </div>
+                {activePlayers.map(({ name, index }) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                      gap: 6,
+                      padding: "12px 6px 11px",
+                      borderBottom: `1px solid ${colors.ink}`,
+                    }}
+                  >
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => handleNameChange(index, e.target.value)}
+                      style={editorialStyles.playerNameInput}
+                    />
+                    <button
+                      onClick={() => removePlayer(index)}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        color: colors.inputBorder,
+                        cursor: "pointer",
+                        fontSize: 15,
+                        lineHeight: 1,
+                        padding: 0,
+                        flex: "none",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
 
-      {players[0].name && (
-        <div style={styles.tableContainer}>
-          <h2>Enter Scores</h2>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={{ ...styles.th, ...styles.tdFirst, backgroundColor: "#f5f5f5" }}></th>
-                {players.map((player) =>
-                  player.name ? (
-                    <th key={player.id} style={styles.th}>
-                      <h3 style={{ margin: 0, fontSize: "1rem" }}>{player.name}</h3>
-                    </th>
-                  ) : null
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {[...Array(numRounds)].map((_, roundIndex) => {
-                const hasScores = players.some(
-                  (player) =>
-                    scores[roundIndex]?.[player.id]?.trim() !== ""
-                );
-                // Find the last round with scores
-                let lastRoundWithScores = -1;
-                for (let i = numRounds - 1; i >= 0; i--) {
-                  if (players.some((player) => scores[i]?.[player.id]?.trim() !== "")) {
-                    lastRoundWithScores = i;
-                    break;
-                  }
-                }
-                const isLastRound = roundIndex === lastRoundWithScores;
-
-                return (
+                {[...Array(numRounds)].map((_, roundIndex) => (
                   <React.Fragment key={roundIndex}>
-                    <tr>
-                      <td style={styles.tdFirst}>
-                        Round {roundIndex + 1}
+                    <div
+                      style={{
+                        fontFamily: fonts.franklin,
+                        fontSize: 13,
+                        color: "#8a8a8a",
+                        padding: "0 8px 0 0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        borderBottom: `1px solid ${colors.ruleFaint}`,
+                        minHeight: 48,
+                      }}
+                    >
+                      {roundIndex + 1}
+                      {numRounds > 1 && (
                         <button
                           onClick={() => deleteRound(roundIndex)}
                           style={{
-                            ...styles.button,
-                            padding: "0.25rem 0.5rem",
-                            marginLeft: "0.5rem",
-                            backgroundColor: "#f44336",
-                            fontSize: "0.9rem",
-                            minHeight: "auto",
+                            border: "none",
+                            background: "none",
+                            color: colors.inputBorder,
+                            cursor: "pointer",
+                            fontSize: 15,
+                            padding: 0,
                           }}
                         >
                           ×
                         </button>
-                      </td>
-                      {players.map((player) =>
-                        player.name ? (
-                          <td key={player.id} style={styles.td}>
-                            <input
-                              type="number"
-                              max={MAX_SCORE}
-                              value={scores[roundIndex]?.[player.id] || ""}
-                              onChange={(e) =>
-                                handleScoreChange(player.id, roundIndex, e.target.value)
-                              }
-                              style={styles.scoreInput}
-                            />
-                          </td>
-                        ) : null
                       )}
-                    </tr>
-                    {hasScores && (
-                      <tr>
-                        <td style={isLastRound ? styles.tdFirstSticky : styles.tdFirst}>
-                          Total Score
-                        </td>
-                        {players.map((player) =>
-                          player.name ? (
-                            <td key={player.id} style={isLastRound ? styles.tdSticky : styles.td}>
-                              {calculateCumulativeScore(
-                                scores.map(round => round[player.id]),
-                                roundIndex
-                              )}
-                            </td>
-                          ) : null
-                        )}
-                      </tr>
-                    )}
+                    </div>
+                    {activePlayers.map(({ index }) => {
+                      const cellKey = `${roundIndex}-${index}`;
+                      return (
+                        <div
+                          key={cellKey}
+                          style={{
+                            borderBottom: `1px solid ${colors.ruleFaint}`,
+                            display: "flex",
+                            backgroundColor:
+                              focusedCell === cellKey ? colors.inputFocus : "transparent",
+                          }}
+                        >
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={scores[roundIndex]?.[index] || ""}
+                            onChange={(e) =>
+                              handleScoreChange(index, roundIndex, e.target.value)
+                            }
+                            onFocus={() => setFocusedCell(cellKey)}
+                            onBlur={() => setFocusedCell(null)}
+                            placeholder="—"
+                            style={editorialStyles.scoreInput}
+                          />
+                        </div>
+                      );
+                    })}
                   </React.Fragment>
+                ))}
+
+                <div
+                  style={{
+                    fontFamily: fonts.franklin,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: colors.ink,
+                    padding: "14px 8px 0 0",
+                    display: "flex",
+                    alignItems: "center",
+                    borderTop: `2px solid ${colors.ink}`,
+                  }}
+                >
+                  Total
+                </div>
+                {activePlayers.map(({ index }) => {
+                  const total = calculateCumulativeScore(
+                    scores.map((row) => row[index]),
+                    numRounds - 1
+                  );
+                  const isLeader = total === leaderTotal && activeCount > 0;
+                  return (
+                    <div
+                      key={`total-${index}`}
+                      style={{
+                        fontFamily: fonts.numbers,
+                        fontSize: 22,
+                        fontWeight: 700,
+                        textAlign: "right",
+                        padding: "14px 6px 0",
+                        borderTop: `2px solid ${colors.ink}`,
+                        color: isLeader ? colors.accent : colors.body,
+                      }}
+                    >
+                      {total}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Cumulative rows per round */}
+              {[...Array(numRounds)].map((_, roundIndex) => {
+                const hasScores = activePlayers.some(
+                  ({ index }) => scores[roundIndex]?.[index]?.trim() !== ""
+                );
+                if (!hasScores) return null;
+                return (
+                  <div key={`cumulative-${roundIndex}`} style={{ marginTop: 16 }}>
+                    <div
+                      style={{
+                        fontFamily: fonts.franklin,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: colors.faintLabel,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Round {roundIndex + 1} · Total Score
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
+                      <div style={{ padding: "8px 8px 8px 0", borderBottom: `1px solid ${colors.ruleFaint}`, fontFamily: fonts.franklin, fontSize: 13, color: "#8a8a8a" }}>
+                        Cumulative
+                      </div>
+                      {activePlayers.map(({ index }) => (
+                        <div
+                          key={index}
+                          style={{
+                            fontFamily: fonts.numbers,
+                            fontSize: 18,
+                            textAlign: "right",
+                            padding: "8px 6px",
+                            borderBottom: `1px solid ${colors.ruleFaint}`,
+                          }}
+                        >
+                          {calculateCumulativeScore(
+                            scores.map((row) => row[index]),
+                            roundIndex
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-          <button onClick={addRound} style={{ ...styles.button, marginTop: "1rem" }}>
-            Add Round
-          </button>
-        </div>
-      )}
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 12,
+                  marginTop: 24,
+                }}
+              >
+                <button onClick={addRound} style={editorialStyles.btnPrimary}>
+                  + Add Round
+                </button>
+                <button onClick={removeLastRound} style={editorialStyles.btnOutline}>
+                  Remove Last Round
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 16,
+                  marginTop: 18,
+                }}
+              >
+                <button onClick={handleFinishGame} style={editorialStyles.btnPrimary}>
+                  Finish &amp; Log Game
+                </button>
+                <span style={{ fontFamily: fonts.franklin, fontSize: 13, color: "#8a8a8a" }}>
+                  Saves this result to the game&apos;s history and starts a fresh card.
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 10,
+                  marginTop: 26,
+                }}
+              >
+                <input
+                  type="text"
+                  value={draftPlayer}
+                  onChange={(e) => setDraftPlayer(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+                  placeholder="Add another player"
+                  style={editorialStyles.addPlayerInput}
+                />
+                <button onClick={addPlayer} style={editorialStyles.btnOutline}>
+                  Add
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  marginTop: 30,
+                  paddingTop: 20,
+                  borderTop: `1px solid ${colors.rule}`,
+                }}
+              >
+                <button onClick={clearOnlyScores} style={editorialStyles.btnClear}>
+                  Clear Scores
+                </button>
+                <button
+                  onClick={handleClearAll}
+                  style={editorialStyles.btnDanger}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.accent;
+                    e.currentTarget.style.color = colors.paper;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "none";
+                    e.currentTarget.style.color = colors.accent;
+                  }}
+                >
+                  Clear Players &amp; Scores
+                </button>
+              </div>
+            </div>
+          )}
+
+          <GameHistorySection
+            history={history}
+            onDelete={(id) => setHistory(deleteHistory(HISTORY_KEY, id))}
+            onClearHistory={() => setHistory(clearHistory(HISTORY_KEY))}
+          />
+        </section>
+
+        <StandingsRail standings={standings} gameName="Golf" history={history} isNarrow={isNarrow} />
+      </div>
     </div>
   );
 }

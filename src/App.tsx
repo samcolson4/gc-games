@@ -9,8 +9,8 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import NewZealandVideo from './components/nz';
 import Suburb from './components/suburb';
 import { useState, useEffect } from 'react';
+import { colors } from './styles/tokens';
 
-// Responsive Rummy component that switches based on window width
 function ResponsiveRummy() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -40,7 +40,6 @@ function AppContent() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Hide header bar on mobile for rummy page
   const showHeader = !(isMobile && isRummyPage);
 
   return (
@@ -50,16 +49,11 @@ function AppContent() {
         flexDirection: 'column',
         minHeight: '100vh',
         width: '100%',
+        backgroundColor: colors.paper,
       }}
     >
       {showHeader && <HeaderBar />}
-      <Box sx={{ mt: 1 }}>
-        {showHeader && (
-          <>
-            <hr style={{ width: '90%', margin: '0.1rem auto' }} />
-            <hr style={{ width: '90%', margin: '0.1rem auto' }} />
-          </>
-        )}
+      <Box sx={{ width: '100%' }}>
         <Routes>
           <Route path="/" element={<ResponsiveRummy />} />
           <Route path="/rummy-mobile" element={<RummyMobile />} />

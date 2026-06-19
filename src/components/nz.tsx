@@ -1,32 +1,36 @@
-import React from 'react';
+import { colors } from '../styles/tokens';
+import { editorialStyles } from '../styles/editorialStyles';
 
 function NewZealandVideo() {
-  const containerStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    padding: '1rem',
-    boxSizing: 'border-box',
-  };
-
-  const iframeStyle: React.CSSProperties = {
-    border: "none",
-    width: "100%",
-    maxWidth: "1080px",
-    aspectRatio: "3 / 1",
-    minHeight: "200px",
-  };
-
   return (
-    <div style={containerStyle}>
-      <iframe
-        src="https://player.vimeo.com/video/1090882752"
-        allow="autoplay; fullscreen; picture-in-picture"
-        style={iframeStyle}
-        allowFullScreen
-        title="New Zealand Video"
-      ></iframe>
+    <div style={{ ...editorialStyles.pageContainer, paddingBottom: 80 }}>
+      <div style={editorialStyles.eyebrow}>Feature</div>
+      <h2 style={editorialStyles.gameTitle}>NZ</h2>
+      <p style={editorialStyles.dek}>
+        The New Zealand feature presentation.
+      </p>
+      <div
+        style={{
+          marginTop: 28,
+          border: `1px solid ${colors.ink}`,
+          width: '100%',
+          aspectRatio: '16 / 9',
+          backgroundColor: colors.ink,
+        }}
+      >
+        <iframe
+          src="https://player.vimeo.com/video/1090882752"
+          allow="autoplay; fullscreen; picture-in-picture"
+          style={{
+            border: 'none',
+            width: '100%',
+            height: '100%',
+            display: 'block',
+          }}
+          allowFullScreen
+          title="New Zealand Video"
+        />
+      </div>
     </div>
   );
 }

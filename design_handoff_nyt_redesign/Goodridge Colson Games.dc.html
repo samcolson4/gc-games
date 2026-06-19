@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; -webkit-font-smoothing: antialiased; }
+  input { font-family: inherit; }
+  input::placeholder { color: #b3b3b3; }
+  input[type=text]::-webkit-outer-spin-button, input[type=text]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  @font-face { font-family: 'CloisterBlack'; src: url('assets/CloisterBlack.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+  @keyframes ggcpulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+</style>
+</helmet>
+
+<div data-screen-label="Scorebook" style="{{ wrapStyle }}">
+  <div style="max-width:1180px;margin:0 auto;padding:0 40px;">
+
+    <!-- Utility bar -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:16px 0 8px;font-family:'Libre Franklin',sans-serif;">
+      <div style="display:flex;align-items:center;gap:18px;">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#121212" stroke-width="2" style="margin-top:1px;"><circle cx="10.5" cy="10.5" r="7"></circle><line x1="15.5" y1="15.5" x2="21" y2="21"></line></svg>
+        <div>
+          <div style="font-size:13.5px;color:#121212;font-weight:500;">Thursday, June 19, 2026</div>
+          <div style="font-size:13.5px;color:#5a5a5a;text-decoration:underline;text-underline-offset:2px;margin-top:2px;">Today's Scorebook</div>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7a7a7a;font-weight:600;">Currently Leading</div>
+        <div style="font-size:15px;color:#121212;font-weight:600;margin-top:3px;">{{ leaderChip }}</div>
+      </div>
+    </div>
+
+    <!-- Masthead -->
+    <div style="text-align:center;padding:6px 0 14px;">
+      <h1 style="font-family:'CloisterBlack','UnifrakturCook',serif;font-weight:700;font-size:clamp(38px,6.6vw,78px);line-height:1.04;margin:0;color:#121212;letter-spacing:.01em;">Goodridge Colson Games</h1>
+    </div>
+
+    <!-- Nav -->
+    <div style="border-top:1px solid #121212;">
+      <nav style="display:flex;justify-content:center;flex-wrap:wrap;gap:30px;padding:11px 0;">
+        <sc-for list="{{ navGames }}" as="nav" hint-placeholder-count="5">
+          <button onClick="{{ nav.onClick }}" style="{{ nav.style }}" style-hover="{{ nav.hover }}">{{ nav.name }}</button>
+        </sc-for>
+      </nav>
+    </div>
+    <div style="border-top:3px solid #121212;border-bottom:1px solid #121212;height:3px;"></div>
+
+    <!-- Live standings strip -->
+    <div style="display:flex;justify-content:center;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid #e2e2e2;flex-wrap:wrap;text-align:center;">
+      <span style="display:inline-flex;align-items:center;gap:7px;">
+        <span style="width:8px;height:8px;border-radius:50%;animation:ggcpulse 1.6s ease-in-out infinite;{{ liveDotStyle }}"></span>
+        <span style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;{{ liveLabelStyle }}">{{ liveLabel }}</span>
+      </span>
+      <span style="font-family:'Libre Caslon Text',Georgia,serif;font-size:18px;color:#121212;">{{ liveHeadline }}</span>
+      <span style="font-family:'Libre Franklin',sans-serif;font-size:13px;color:#7a7a7a;">{{ liveMeta }}</span>
+    </div>
+
+    <!-- Main -->
+    <sc-if value="{{ isScore }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:1fr 312px;gap:48px;padding:34px 0 80px;align-items:start;">
+
+      <!-- Scorecard column -->
+      <section>
+        <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9a9a9a;margin-bottom:8px;">The Scorecard</div>
+        <h2 style="font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:46px;line-height:1.02;margin:0;color:#121212;">{{ game }}</h2>
+        <p style="font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:18px;color:#5a5a5a;margin:10px 0 0;">{{ dek }}</p>
+
+        <!-- Populated state -->
+        <sc-if value="{{ hasPlayers }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:28px;border-top:2px solid #121212;">
+            <div style="{{ gridStyle }}">
+              <!-- header row -->
+              <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a9a9a;padding:12px 8px 11px 0;border-bottom:1px solid #121212;align-self:end;">{{ cornerLabel }}</div>
+              <sc-for list="{{ headerCols }}" as="col" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:12px 6px 11px;border-bottom:1px solid #121212;">
+                  <span style="font-family:'Libre Franklin',sans-serif;font-size:13px;font-weight:700;color:#121212;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;">{{ col.name }}</span>
+                  <button onClick="{{ col.onRemove }}" style="border:none;background:none;color:#cfcfcf;cursor:pointer;font-size:15px;line-height:1;padding:0;flex:none;" style-hover="{{ removeHover }}">×</button>
+                </div>
+              </sc-for>
+              <!-- rounds -->
+              <sc-for list="{{ rows }}" as="row" hint-placeholder-count="4">
+                <div style="display:contents">
+                  <div style="font-family:'Libre Franklin',sans-serif;font-size:13px;color:#8a8a8a;padding:0 8px 0 0;display:flex;align-items:center;border-bottom:1px solid #ececec;min-height:48px;">{{ row.num }}</div>
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="3">
+                    <div style="border-bottom:1px solid #ececec;display:flex;">
+                      <input type="text" inputmode="numeric" value="{{ cell.value }}" onChange="{{ cell.onChange }}" placeholder="—" style="width:100%;border:none;background:transparent;outline:none;text-align:right;font-family:Georgia,serif;font-size:20px;color:#1a1a1a;padding:10px 6px;" style-focus="{{ inputFocus }}">
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+              <!-- totals -->
+              <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#121212;padding:14px 8px 0 0;display:flex;align-items:center;border-top:2px solid #121212;">Total</div>
+              <sc-for list="{{ totalsCells }}" as="t" hint-placeholder-count="3">
+                <div style="{{ t.style }}">{{ t.value }}</div>
+              </sc-for>
+            </div>
+
+            <!-- controls -->
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:24px;">
+              <button onClick="{{ onAddRound }}" style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:#121212;color:#fff;border:1px solid #121212;padding:11px 18px;cursor:pointer;" style-hover="{{ darkHover }}">+ Add Round</button>
+              <button onClick="{{ onRemoveRound }}" style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:none;color:#121212;border:1px solid #121212;padding:11px 18px;cursor:pointer;" style-hover="{{ outlineHover }}">Remove Last Round</button>
+            </div>
+
+            <!-- finish game -->
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:18px;">
+              <button onClick="{{ onFinish }}" style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:#121212;color:#fff;border:1px solid #121212;padding:11px 20px;cursor:pointer;" style-hover="{{ darkHover }}">Finish &amp; Log Game</button>
+              <span style="font-family:'Libre Franklin',sans-serif;font-size:13px;color:#8a8a8a;">Saves this result to the game's history and starts a fresh card.</span>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:26px;">
+              <input type="text" value="{{ draft }}" onChange="{{ onDraftChange }}" onKeyDown="{{ onDraftKey }}" placeholder="Add another player" style="font-family:'Libre Franklin',sans-serif;font-size:14px;padding:10px 13px;border:1px solid #cfcfcf;outline:none;width:220px;color:#121212;" style-focus="{{ borderFocus }}">
+              <button onClick="{{ onAddPlayer }}" style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:none;color:#121212;border:1px solid #121212;padding:11px 18px;cursor:pointer;" style-hover="{{ outlineHover }}">Add</button>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:30px;padding-top:20px;border-top:1px solid #e2e2e2;">
+              <button onClick="{{ onClearScores }}" style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;background:none;color:#5a5a5a;border:1px solid #d2d2d2;padding:9px 15px;cursor:pointer;" style-hover="{{ outlineHover }}">Clear Scores</button>
+              <button onClick="{{ onClearAll }}" style="{{ dangerStyle }}" style-hover="{{ dangerHover }}">Clear Players &amp; Scores</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Empty state -->
+        <sc-if value="{{ noPlayers }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:36px;border-top:2px solid #121212;padding-top:48px;text-align:center;">
+            <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9a9a9a;">No game in progress</div>
+            <h3 style="font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:30px;margin:12px 0 26px;color:#121212;">Enter player names to begin</h3>
+            <div style="display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;">
+              <input type="text" value="{{ draft }}" onChange="{{ onDraftChange }}" onKeyDown="{{ onDraftKey }}" placeholder="Player 1" style="font-family:'Libre Franklin',sans-serif;font-size:16px;padding:13px 16px;border:1px solid #cfcfcf;outline:none;width:260px;text-align:center;color:#121212;" style-focus="{{ borderFocus }}">
+              <button onClick="{{ onAddPlayer }}" style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:#121212;color:#fff;border:1px solid #121212;padding:14px 22px;cursor:pointer;" style-hover="{{ darkHover }}">Add Player</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Recent games log -->
+        <sc-if value="{{ hasHistory }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:52px;">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:2px solid #121212;padding-bottom:11px;">
+              <span style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9a9a9a;">Recent Games</span>
+              <button onClick="{{ onClearHistory }}" style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:none;border:none;color:#9a9a9a;cursor:pointer;padding:0;" style-hover="{{ tinyLinkHover }}">Clear history</button>
+            </div>
+            <sc-for list="{{ pastGames }}" as="g" hint-placeholder-count="2">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding:18px 0;border-bottom:1px solid #e2e2e2;">
+                <div style="min-width:0;">
+                  <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9a9a9a;">{{ g.label }} · {{ g.date }}</div>
+                  <div style="font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:23px;color:#121212;margin-top:5px;line-height:1.15;">{{ g.winnerLine }}</div>
+                  <div style="font-family:Georgia,serif;font-size:15px;color:#6b6b6b;margin-top:5px;overflow-wrap:anywhere;">{{ g.scoreLine }}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex:none;">
+                  <span style="font-family:'Libre Franklin',sans-serif;font-size:11.5px;color:#9a9a9a;white-space:nowrap;">{{ g.meta }}</span>
+                  <button onClick="{{ g.onDelete }}" style="border:none;background:none;color:#cfcfcf;cursor:pointer;font-size:17px;line-height:1;padding:0;" style-hover="{{ removeHover }}">×</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </section>
+
+      <!-- Standings rail -->
+      <aside style="border-left:1px solid #121212;padding-left:32px;">
+        <div style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;{{ railEyebrowStyle }}">Standings</div>
+        <div style="font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:14px;color:#7a7a7a;margin-top:5px;padding-bottom:16px;border-bottom:1px solid #121212;">{{ winText }}</div>
+
+        <sc-if value="{{ hasLeader }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:22px 0 20px;border-bottom:1px solid #e2e2e2;">
+            <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;{{ railEyebrowStyle }}">1st · In the lead</div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:8px;">
+              <span style="font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:30px;line-height:1.05;color:#121212;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;">{{ leaderName }}</span>
+              <span style="font-family:Georgia,serif;font-size:32px;font-weight:700;line-height:1;flex:none;{{ leaderNumStyle }}">{{ leaderTotal }}</span>
+            </div>
+          </div>
+          <sc-for list="{{ restStandings }}" as="s" hint-placeholder-count="2">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:15px 0;border-bottom:1px solid #ececec;">
+              <span style="display:flex;align-items:baseline;gap:11px;min-width:0;flex:1 1 auto;">
+                <span style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:700;color:#b0b0b0;flex:none;">{{ s.rank }}</span>
+                <span style="font-family:'Libre Caslon Text',Georgia,serif;font-size:19px;color:#121212;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;">{{ s.name }}</span>
+              </span>
+              <span style="font-family:Georgia,serif;font-size:21px;color:#444;flex:none;">{{ s.total }}</span>
+            </div>
+          </sc-for>
+        </sc-if>
+
+        <sc-if value="{{ noPlayers }}" hint-placeholder-val="{{ true }}">
+          <p style="font-family:'Libre Caslon Text',Georgia,serif;font-size:16px;color:#9a9a9a;line-height:1.5;margin:22px 0 0;">The table is empty. Add players and the standings will keep score, ranked from first to last.</p>
+        </sc-if>
+
+        <!-- This season -->
+        <sc-if value="{{ hasHistory }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:32px;padding-top:18px;border-top:2px solid #121212;">
+            <div style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;{{ railEyebrowStyle }}">This Season</div>
+            <div style="font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:14px;color:#7a7a7a;margin-top:5px;padding-bottom:14px;border-bottom:1px solid #121212;">{{ seasonTitle }}</div>
+            <sc-for list="{{ seasonRows }}" as="s" hint-placeholder-count="2">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid #ececec;">
+                <span style="display:flex;align-items:baseline;gap:11px;min-width:0;flex:1 1 auto;">
+                  <span style="font-family:'Libre Franklin',sans-serif;font-size:12px;font-weight:700;color:#b0b0b0;flex:none;">{{ s.rank }}</span>
+                  <span style="font-family:'Libre Caslon Text',Georgia,serif;font-size:19px;color:#121212;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0;">{{ s.name }}</span>
+                </span>
+                <span style="display:flex;align-items:baseline;gap:6px;flex:none;">
+                  <span style="{{ s.numStyle }}">{{ s.wins }}</span>
+                  <span style="font-family:'Libre Franklin',sans-serif;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#9a9a9a;">{{ s.winWord }}</span>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </aside>
+
+    </div>
+    </sc-if>
+
+    <!-- Map view (Suburb) -->
+    <sc-if value="{{ isMap }}" hint-placeholder-val="{{ false }}">
+      <section style="padding:34px 0 80px;">
+        <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9a9a9a;margin-bottom:8px;">Reference</div>
+        <h2 style="font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:46px;line-height:1.02;margin:0;color:#121212;">{{ game }}</h2>
+        <p style="font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:18px;color:#5a5a5a;margin:10px 0 24px;">{{ mapDek }}</p>
+        <div style="position:relative;border:1px solid #121212;height:560px;display:flex;align-items:center;justify-content:center;background-image:repeating-linear-gradient(45deg,#efece4 0,#efece4 13px,#f6f3ec 13px,#f6f3ec 26px);">
+          <div style="text-align:center;padding:24px;">
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:13px;letter-spacing:.03em;color:#5a5a5a;background:#fff;border:1px solid #cfcfcf;padding:11px 16px;display:inline-block;">suburbs.svg — interactive pan &amp; zoom map</div>
+            <div style="font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:16px;color:#9a9a9a;margin-top:16px;max-width:380px;line-height:1.5;">The full map asset lives in your repo and renders here in the live app.</div>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- Video view (NZ) -->
+    <sc-if value="{{ isVideo }}" hint-placeholder-val="{{ false }}">
+      <section style="padding:34px 0 80px;">
+        <div style="font-family:'Libre Franklin',sans-serif;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#9a9a9a;margin-bottom:8px;">Feature</div>
+        <h2 style="font-family:'Libre Caslon Text',Georgia,serif;font-weight:700;font-size:46px;line-height:1.02;margin:0;color:#121212;">{{ game }}</h2>
+        <p style="font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:18px;color:#5a5a5a;margin:10px 0 24px;">{{ videoDek }}</p>
+        <div style="border:1px solid #121212;background:#000;aspect-ratio:16/9;width:100%;">
+          <iframe src="https://player.vimeo.com/video/1090882752" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="New Zealand Video" style="border:none;width:100%;height:100%;display:block;"></iframe>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#d0021b&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;paper&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Newsprint&quot;,&quot;Sepia&quot;],&quot;default&quot;:&quot;Newsprint&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.KEY = 'ggc-scorebook-v2';
+    this.GAMES = [
+      { name: 'Rummy',         type: 'score', lowWins: true, roundLabel: 'Round', unit: 'Round' },
+      { name: 'Golf',          type: 'score', lowWins: true, roundLabel: 'Round', unit: 'Round' },
+      { name: 'Mexican Train', type: 'score', lowWins: true, roundLabel: 'Round', unit: 'Round' },
+      { name: 'Suburb',        type: 'map' },
+      { name: 'NZ',            type: 'video' },
+    ];
+    this.state = { game: 'Rummy', data: {}, draft: '' };
+  }
+
+  componentDidMount() {
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        this.setState({
+          game: saved.game || 'Rummy',
+          data: saved.data || {},
+        });
+      }
+    } catch (e) {}
+  }
+
+  cfg() { return this.GAMES.find(g => g.name === this.state.game) || this.GAMES[0]; }
+  cloneData() { return JSON.parse(JSON.stringify(this.state.data || {})); }
+  cur(data) {
+    const d = data || this.state.data || {};
+    return d[this.state.game] || { players: [], rounds: [] };
+  }
+  commit(data) {
+    this.setState({ data });
+    try { localStorage.setItem(this.KEY, JSON.stringify({ game: this.state.game, data })); } catch (e) {}
+  }
+
+  selectGame(name) {
+    this.setState({ game: name, draft: '' });
+    try { localStorage.setItem(this.KEY, JSON.stringify({ game: name, data: this.state.data })); } catch (e) {}
+  }
+
+  addPlayer(name) {
+    const n = (name || '').trim();
+    if (!n) return;
+    const data = this.cloneData();
+    if (!data[this.state.game]) data[this.state.game] = { players: [], rounds: [] };
+    const c = data[this.state.game];
+    c.players.push(n);
+    c.rounds.forEach(rd => rd.push(''));
+    this.setState({ draft: '' });
+    this.commit(data);
+  }
+
+  removePlayer(idx) {
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c) return;
+    c.players.splice(idx, 1);
+    c.rounds.forEach(rd => rd.splice(idx, 1));
+    this.commit(data);
+  }
+
+  addRound() {
+    const data = this.cloneData();
+    if (!data[this.state.game]) data[this.state.game] = { players: [], rounds: [] };
+    const c = data[this.state.game];
+    if (!c.players.length) return;
+    c.rounds.push(c.players.map(() => ''));
+    this.commit(data);
+  }
+
+  removeLastRound() {
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c || !c.rounds.length) return;
+    c.rounds.pop();
+    this.commit(data);
+  }
+
+  setCell(r, idx, val) {
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c || !c.rounds[r]) return;
+    c.rounds[r][idx] = String(val).replace(/[^0-9\-]/g, '');
+    this.commit(data);
+  }
+
+  clearScores() {
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c) return;
+    c.rounds = [];
+    this.commit(data);
+  }
+
+  clearAll() {
+    const data = this.cloneData();
+    const prev = data[this.state.game] || {};
+    data[this.state.game] = { players: [], rounds: [], history: prev.history || [] };
+    this.commit(data);
+  }
+
+  finishGame() {
+    const cfg = this.cfg();
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c || !c.players.length || !c.rounds.length) return;
+    const totals = c.players.map((_, i) => c.rounds.reduce((s, rd) => s + (parseInt(rd[i], 10) || 0), 0));
+    const results = c.players.map((p, i) => ({ name: p, total: totals[i] }))
+      .sort((a, b) => cfg.lowWins ? a.total - b.total : b.total - a.total);
+    const now = new Date();
+    const rec = {
+      id: Date.now(),
+      date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      time: now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      unit: cfg.unit,
+      roundCount: c.rounds.length,
+      playerCount: c.players.length,
+      winnerName: results[0].name,
+      winnerTotal: results[0].total,
+      results,
+    };
+    if (!c.history) c.history = [];
+    c.history.unshift(rec);
+    c.rounds = [];
+    this.commit(data);
+  }
+
+  deleteHistory(id) {
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c || !c.history) return;
+    c.history = c.history.filter(h => h.id !== id);
+    this.commit(data);
+  }
+
+  clearHistory() {
+    const data = this.cloneData();
+    const c = data[this.state.game];
+    if (!c) return;
+    c.history = [];
+    this.commit(data);
+  }
+
+  renderVals() {
+    const cfg = this.cfg();
+    const cur = this.cur();
+    const players = cur.players || [];
+    const rounds = cur.rounds || [];
+    const accent = this.props.accentColor || '#d0021b';
+    const sepia = (this.props.paper || 'Newsprint') === 'Sepia';
+    const type = cfg.type || 'score';
+    const isScore = type === 'score';
+    const isMap = type === 'map';
+    const isVideo = type === 'video';
+    const lowWins = cfg.lowWins === true;
+    const unit = cfg.unit || 'Round';
+
+    const totals = players.map((_, c) =>
+      rounds.reduce((sum, rd) => sum + (parseInt(rd[c], 10) || 0), 0)
+    );
+
+    const entries = players.map((p, c) => ({ name: p, total: totals[c] }));
+    const sorted = entries.slice().sort((a, b) => lowWins ? a.total - b.total : b.total - a.total);
+    const leader = sorted[0];
+
+    const navGames = this.GAMES.map(g => {
+      const active = g.name === this.state.game;
+      return {
+        name: g.name,
+        onClick: () => this.selectGame(g.name),
+        style: {
+          fontFamily: "'Libre Franklin',sans-serif",
+          fontSize: '17px',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '4px 0 5px',
+          letterSpacing: '.005em',
+          color: active ? '#121212' : '#3c3c3c',
+          fontWeight: active ? 700 : 500,
+          borderBottom: active ? '2px solid #121212' : '2px solid transparent',
+        },
+        hover: { color: '#121212' },
+      };
+    });
+
+    const headerCols = players.map((p, c) => ({ name: p, onRemove: () => this.removePlayer(c) }));
+
+    const rows = rounds.map((rd, r) => ({
+      num: r + 1,
+      cells: players.map((p, c) => ({
+        value: rd[c] == null ? '' : rd[c],
+        onChange: (e) => this.setCell(r, c, e.target.value),
+      })),
+    }));
+
+    const totalsCells = players.map((p, c) => {
+      const isLeader = leader && players.length > 1 && leader.name === p && leader.total === totals[c];
+      return {
+        value: totals[c],
+        style: {
+          fontFamily: 'Georgia,serif',
+          fontSize: '22px',
+          fontWeight: 700,
+          textAlign: 'right',
+          padding: '14px 6px 0',
+          borderTop: '2px solid #121212',
+          color: isLeader ? accent : '#121212',
+        },
+      };
+    });
+
+    const restStandings = sorted.slice(1).map((s, i) => ({ rank: i + 2, name: s.name, total: s.total }));
+
+    // ---- history / season ----
+    const history = cur.history || [];
+    const hasHistory = history.length > 0;
+    const gamesWord = history.length === 1 ? 'game' : 'games';
+
+    const pastGames = history.map((h, i) => ({
+      id: h.id,
+      label: `Game ${history.length - i}`,
+      date: `${h.date} · ${h.time}`,
+      winnerLine: `${h.winnerName} won with ${h.winnerTotal}`,
+      scoreLine: h.results.map(r => `${r.name} ${r.total}`).join('   ·   '),
+      meta: `${h.playerCount} players · ${h.roundCount} ${h.unit.toLowerCase()}${h.roundCount === 1 ? '' : 's'}`,
+      onDelete: () => this.deleteHistory(h.id),
+    }));
+
+    const seasonMap = {};
+    history.forEach(h => {
+      h.results.forEach((r, idx) => {
+        if (!seasonMap[r.name]) seasonMap[r.name] = { name: r.name, wins: 0, played: 0 };
+        seasonMap[r.name].played += 1;
+        if (idx === 0) seasonMap[r.name].wins += 1;
+      });
+    });
+    const seasonRows = Object.values(seasonMap)
+      .sort((a, b) => b.wins - a.wins || b.played - a.played)
+      .map((s, i) => ({
+        rank: i + 1,
+        name: s.name,
+        wins: s.wins,
+        winWord: s.wins === 1 ? 'win' : 'wins',
+        numStyle: { fontFamily: 'Georgia,serif', fontSize: '22px', fontWeight: 700, color: i === 0 ? accent : '#333' },
+      }));
+
+    const roundWord = unit.toLowerCase() + (rounds.length === 1 ? '' : 's');
+    const playerWord = players.length === 1 ? 'player' : 'players';
+    const dek = players.length
+      ? `${players.length} ${playerWord} · ${rounds.length} ${roundWord} played · ${lowWins ? 'lowest score wins' : 'highest score wins'}`
+      : `Keeping score the way ${lowWins ? 'lowest' : 'highest'} wins — best is least.`;
+
+    const hasLeader = isScore && players.length >= 1;
+    const liveActive = isScore && players.length >= 1;
+
+    return {
+      game: this.state.game,
+      dek,
+      cornerLabel: cfg.roundLabel || 'Round',
+      navGames,
+      headerCols,
+      rows,
+      totalsCells,
+      gridStyle: {
+        display: 'grid',
+        gridTemplateColumns: `minmax(58px,auto) repeat(${Math.max(players.length, 1)}, minmax(80px,1fr))`,
+        width: '100%',
+      },
+      hasPlayers: players.length > 0,
+      noPlayers: players.length === 0,
+      draft: this.state.draft,
+      onDraftChange: (e) => this.setState({ draft: e.target.value }),
+      onDraftKey: (e) => { if (e.key === 'Enter') this.addPlayer(this.state.draft); },
+      onAddPlayer: () => this.addPlayer(this.state.draft),
+      onAddRound: () => this.addRound(),
+      onRemoveRound: () => this.removeLastRound(),
+      onClearScores: () => this.clearScores(),
+      onClearAll: () => this.clearAll(),
+
+      // standings
+      hasLeader,
+      leaderName: leader ? leader.name : '',
+      leaderTotal: leader ? leader.total : 0,
+      restStandings,
+      winText: lowWins ? 'Fewest points takes the lead.' : 'Most points takes the lead.',
+
+      // view type
+      isScore,
+      isMap,
+      isVideo,
+      mapDek: 'A pan-and-zoom reference map of the suburbs — drag to move, scroll to zoom.',
+      videoDek: 'The New Zealand feature presentation.',
+
+      // history / season
+      hasHistory,
+      pastGames,
+      seasonRows,
+      seasonTitle: `${history.length} ${gamesWord} logged in ${this.state.game}`,
+      onFinish: () => this.finishGame(),
+      onClearHistory: () => this.clearHistory(),
+      tinyLinkHover: { color: accent },
+
+      // live strip
+      liveLabel: isScore ? (liveActive ? 'LEADING' : 'STANDBY') : (isMap ? 'MAP' : 'FEATURE'),
+      liveHeadline: isScore ? (liveActive ? `${leader.name} leads with ${leader.total}` : 'No game in progress') : (isMap ? 'Suburbs reference map' : 'New Zealand'),
+      liveMeta: isScore ? (liveActive ? `· ${players.length} ${playerWord} · ${rounds.length} ${roundWord}` : '· Add players to begin') : (isMap ? '· Drag to pan · scroll to zoom' : '· Press play to watch'),
+      leaderChip: (isScore && liveActive) ? `${leader.name}  ${leader.total}` : '—',
+
+      // accent / theme style objects
+      wrapStyle: {
+        background: sepia ? '#f6f1e6' : '#ffffff',
+        color: '#1a1a1a',
+        fontFamily: 'Georgia,serif',
+        minHeight: '100vh',
+      },
+      liveDotStyle: { background: liveActive ? accent : '#b0b0b0' },
+      liveLabelStyle: { color: liveActive ? accent : '#9a9a9a' },
+      railEyebrowStyle: { color: accent },
+      leaderNumStyle: { color: accent },
+      dangerStyle: {
+        fontFamily: "'Libre Franklin',sans-serif", fontSize: '11px', fontWeight: 600,
+        letterSpacing: '.1em', textTransform: 'uppercase', background: 'none',
+        color: accent, border: '1px solid ' + accent, padding: '9px 15px', cursor: 'pointer',
+      },
+      dangerHover: { background: accent, color: '#fff' },
+
+      // hover/focus helpers
+      darkHover: { background: '#000' },
+      outlineHover: { background: '#121212', color: '#fff' },
+      removeHover: { color: '#d0021b' },
+      inputFocus: { background: sepia ? '#efe7d4' : '#f7f4ec' },
+      borderFocus: { borderColor: '#121212' },
+    };
+  }
+}
+</script>
+</body>
+</html>
