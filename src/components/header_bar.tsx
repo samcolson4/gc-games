@@ -15,23 +15,6 @@ const GAME_ROUTES: Record<string, { playerKey: string; scoreKey: string; label: 
   },
 };
 
-function SearchGlyph() {
-  return (
-    <svg
-      width="19"
-      height="19"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={colors.ink}
-      strokeWidth="2"
-      style={{ marginTop: 1, flexShrink: 0 }}
-    >
-      <circle cx="10.5" cy="10.5" r="7" />
-      <line x1="15.5" y1="15.5" x2="21" y2="21" />
-    </svg>
-  );
-}
-
 function formatDate() {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -124,24 +107,23 @@ function HeaderBar() {
             fontFamily: fonts.franklin,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <SearchGlyph />
-            <div>
-              <div style={{ fontSize: 13.5, color: colors.ink, fontWeight: 500 }}>
-                {formatDate()}
-              </div>
-              <div
-                style={{
-                  fontSize: 13.5,
-                  color: colors.meta,
-                  textDecoration: "underline",
-                  textUnderlineOffset: 2,
-                  marginTop: 2,
-                }}
-              >
-                Today&apos;s Scorebook
-              </div>
+          <div>
+            <div style={{ fontSize: 13.5, color: colors.ink, fontWeight: 500 }}>
+              {formatDate()}
             </div>
+            <Link
+              to="/scorebook"
+              style={{
+                fontSize: 13.5,
+                color: colors.meta,
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+                marginTop: 2,
+                display: "block",
+              }}
+            >
+              Today&apos;s Scorebook
+            </Link>
           </div>
           <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
             <div>
