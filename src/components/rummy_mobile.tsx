@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   updatePlayerName,
   updateScore,
@@ -16,11 +17,204 @@ import {
 import { colors, fonts } from "../styles/tokens";
 import { editorialStyles } from "../styles/editorialStyles";
 import { GameHistorySection } from "./editorial/ScorecardShared";
+import { useAuth } from "../contexts/AuthContext";
+import { AuthModal } from "./AuthModal";
 
 const PLAYER_KEY = "rummyPlayers";
 const SCORE_KEY = "rummyScores";
 const HISTORY_KEY = "rummyHistory";
 const ROUNDS = 6;
+
+const navItems = [
+  { to: "/", label: "Rummy" },
+  { to: "/golf", label: "Golf" },
+  { to: "/mexican-train", label: "Mexican Train" },
+  { to: "/suburb", label: "Suburb" },
+  { to: "/nz", label: "NZ" },
+];
+
+function BurgerMenu() {
+  const [open, setOpen] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const { user, logout, loading: authLoading } = useAuth();
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="Open menu"
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 5,
+          zIndex: 10,
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            style={{ display: "block", width: 24, height: 2, backgroundColor: colors.ink }}
+          />
+        ))}
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "flex",
+          }}
+        >
+          <div
+            onClick={() => setOpen(false)}
+            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)" }}
+          />
+          <div
+            style={{
+              width: 260,
+              backgroundColor: colors.paper,
+              display: "flex",
+              flexDirection: "column",
+              padding: "24px 0",
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "0 24px 20px",
+                borderBottom: `1px solid ${colors.rule}`,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: fonts.franklin,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  color: colors.meta3,
+                }}
+              >
+                Games
+              </span>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close menu"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  lineHeight: 1,
+                  color: colors.meta,
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <nav style={{ padding: "12px 0" }}>
+              {navItems.map(({ to, label }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => setOpen(false)}
+                  style={{
+                    display: "block",
+                    padding: "14px 24px",
+                    fontFamily: fonts.serif,
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: colors.ink,
+                    textDecoration: "none",
+                    borderBottom: `1px solid ${colors.ruleFaint}`,
+                  }}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+
+            <div
+              style={{
+                marginTop: "auto",
+                padding: "20px 24px 0",
+                borderTop: `1px solid ${colors.rule}`,
+              }}
+            >
+              {!authLoading && (
+                user ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <span
+                      style={{
+                        fontFamily: fonts.franklin,
+                        fontSize: 13,
+                        color: colors.meta3,
+                      }}
+                    >
+                      Signed in as {user.display_name}
+                    </span>
+                    <button
+                      onClick={() => { logout(); setOpen(false); }}
+                      style={{
+                        fontFamily: fonts.franklin,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        background: "none",
+                        border: `1px solid ${colors.inputBorder}`,
+                        color: colors.meta3,
+                        cursor: "pointer",
+                        padding: "8px 16px",
+                      }}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setShowAuth(true); setOpen(false); }}
+                    style={{
+                      fontFamily: fonts.franklin,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      background: colors.ink,
+                      color: colors.paper,
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "10px 20px",
+                      width: "100%",
+                    }}
+                  >
+                    Sign in
+                  </button>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+    </>
+  );
+}
 
 function RummyMobile() {
   const [players, setPlayers] = useState<string[]>(Array(6).fill(""));
@@ -146,8 +340,10 @@ function RummyMobile() {
         padding: "16px",
         boxSizing: "border-box",
         overflowX: "hidden",
+        position: "relative",
       }}
     >
+      <BurgerMenu />
       <div style={{ textAlign: "center", marginBottom: 16, paddingTop: 8 }}>
         <div style={editorialStyles.eyebrow}>The Scorecard</div>
         <h1
