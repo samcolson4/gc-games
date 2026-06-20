@@ -1,7 +1,9 @@
-# Running the backend locally in Docker with a Cloudflare Tunnel
+# Running the backend locally with Docker + Cloudflare Tunnel
 
-This lets you run the Node/Express/SQLite backend on your local machine and expose
-it to the Cloudflare Pages-hosted frontend via a public Cloudflare URL.
+Two containers, nothing exposed to your host machine:
+
+- **`server`** — the Node/Express/SQLite backend, DB stored in a Docker volume
+- **`tunnel`** — `cloudflared`, connects the server container directly to Cloudflare's edge
 
 ---
 
@@ -10,171 +12,112 @@ it to the Cloudflare Pages-hosted frontend via a public Cloudflare URL.
 | Tool | Install |
 |------|---------|
 | Docker Desktop | https://www.docker.com/products/docker-desktop |
-| `cloudflared` | `brew install cloudflared` |
 | Cloudflare account (free) | https://dash.cloudflare.com/sign-up |
-| A domain in Cloudflare DNS | needed for a **named** tunnel (persistent URL) |
+| A domain in Cloudflare DNS | for a stable public URL |
+
+No `cloudflared` install needed locally — it runs inside Docker.
 
 ---
 
-## 1. Build the Docker image
+## 1. Create the Cloudflare Tunnel
 
-From the repo root:
+Do this once in the Cloudflare dashboard.
 
-```bash
-docker build -t gc-games-server ./server
-```
+1. Go to **[Zero Trust](https://one.dash.cloudflare.com)** → **Networks** → **Tunnels**
+2. Click **Create a tunnel** → choose **Cloudflared** → give it a name (e.g. `gc-games-api`)
+3. On the next screen, ignore the install instructions — just **copy the token** shown
+   in the Docker run command. It looks like `eyJ...`. Save it for step 3.
+4. Under **Public Hostnames**, add a route:
+   - **Subdomain**: `api` (or whatever you want)
+   - **Domain**: your domain
+   - **Service**: `http://server:3001`
+   
+   `server` is the Docker Compose service name — Cloudflare's container will reach
+   the backend container via Docker's internal DNS, no host ports needed.
 
-The image compiles the TypeScript, then strips dev dependencies. It uses
-**Node 22** because the backend uses `node:sqlite` (added in Node 22.5).
+5. Save the tunnel.
 
 ---
 
-## 2. Run the container
+## 2. Create a `.env` file
 
-```bash
-docker run -d \
-  --name gc-games \
-  -p 3001:3001 \
-  -v "$(pwd)/server/data:/app/data" \
-  -e JWT_SECRET="replace-with-a-long-random-string" \
-  -e FRONTEND_URL="https://your-app.pages.dev" \
-  gc-games-server
+At the repo root, create `.env` (it's gitignored):
+
+```env
+JWT_SECRET=replace-with-a-long-random-string
+FRONTEND_URL=https://your-app.pages.dev
+TUNNEL_TOKEN=eyJ...your-token-from-step-1...
 ```
 
-**What each flag does:**
-
-- `-p 3001:3001` — maps the container's port to `localhost:3001`
-- `-v "$(pwd)/server/data:/app/data"` — mounts the local `server/data/` directory
-  into the container so the SQLite DB survives restarts
-- `JWT_SECRET` — required; any long random string (e.g. `openssl rand -hex 32`)
-- `FRONTEND_URL` — your Cloudflare Pages URL; added to the CORS allowlist. Use
-  your custom domain if you have one, or the `*.pages.dev` URL.
-
-Check it's up:
+Generate a good `JWT_SECRET` with:
 
 ```bash
-curl http://localhost:3001/health
+openssl rand -hex 32
+```
+
+`FRONTEND_URL` is your Cloudflare Pages URL — used for the CORS allowlist. Use your
+custom domain if you have one, otherwise the `*.pages.dev` URL. No trailing slash.
+
+---
+
+## 3. Start everything
+
+```bash
+docker compose up -d
+```
+
+This builds the server image, starts both containers, and creates the `db_data`
+volume for the SQLite database.
+
+Check the server is up (from inside Docker — no host port is exposed):
+
+```bash
+docker compose exec server wget -qO- http://localhost:3001/health
 # → {"ok":true}
 ```
 
-Stop / restart later:
+Check the tunnel is connected:
 
 ```bash
-docker stop gc-games
-docker start gc-games
+docker compose logs tunnel
+# should show: "Registered tunnel connection"
 ```
 
 ---
 
-## 3. Open a Cloudflare Tunnel
+## 4. Point Cloudflare Pages at the tunnel
 
-You have two options. **Named tunnel** (recommended) gives you a stable URL so you
-only configure `VITE_API_URL` in Cloudflare Pages once. Quick tunnel gives a random
-URL every time.
+`VITE_API_URL` is baked in at build time, so set it in Cloudflare Pages and redeploy.
 
-### Option A — Named tunnel (stable URL)
-
-#### 3a. Log in to Cloudflare
-
-```bash
-cloudflared tunnel login
-```
-
-A browser window opens. Authorise `cloudflared` and select the domain you want to
-use (e.g. `yourdomain.com`). A credentials file is saved to
-`~/.cloudflare/cert.pem`.
-
-#### 3b. Create the tunnel
-
-```bash
-cloudflared tunnel create gc-games-api
-```
-
-This prints a tunnel ID (e.g. `abc123...`). Note it — you'll need it in the config.
-
-#### 3c. Create a config file
-
-Create `~/.cloudflared/config.yml`:
-
-```yaml
-tunnel: gc-games-api
-credentials-file: /Users/YOUR_USERNAME/.cloudflare/gc-games-api.json
-
-ingress:
-  - hostname: api.yourdomain.com
-    service: http://localhost:3001
-  - service: http_status:404
-```
-
-Replace `YOUR_USERNAME` and `api.yourdomain.com` with your values. The credentials
-JSON was created by `cloudflared tunnel create` — it lives in
-`~/.cloudflare/<tunnel-id>.json`.
-
-#### 3d. Add a DNS record
-
-```bash
-cloudflared tunnel route dns gc-games-api api.yourdomain.com
-```
-
-#### 3e. Run the tunnel
-
-```bash
-cloudflared tunnel run gc-games-api
-```
-
-Your backend is now reachable at `https://api.yourdomain.com`.
-
----
-
-### Option B — Quick tunnel (no config, random URL)
-
-```bash
-cloudflared tunnel --url http://localhost:3001
-```
-
-The terminal prints a URL like `https://random-words.trycloudflare.com`. Use that
-as `VITE_API_URL`. It changes every time you restart, so you'd have to update
-Cloudflare Pages each time — fine for a quick test, annoying for regular use.
-
----
-
-## 4. Point the Cloudflare Pages frontend at the tunnel
-
-`VITE_API_URL` is baked in at build time, so set it as an environment variable in
-Cloudflare Pages and trigger a redeploy.
-
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Pages** → your project
+1. [Cloudflare Dashboard](https://dash.cloudflare.com) → **Pages** → your project
 2. **Settings** → **Environment variables** → **Production**
 3. Add `VITE_API_URL` = `https://api.yourdomain.com`
-4. Go to **Deployments** and click **Retry deployment** on the latest build (or
-   push a new commit to trigger one)
-
-Also make sure the `FRONTEND_URL` you passed to Docker (step 2) matches your Pages
-URL exactly — no trailing slash. If you have a custom domain on your Pages project,
-use that; otherwise use the `*.pages.dev` URL.
+4. **Deployments** → **Retry deployment** on the latest build (or push a commit)
 
 ---
 
-## 5. Keeping it running (optional)
-
-To have the tunnel start automatically on login, register `cloudflared` as a
-system service:
+## Day-to-day commands
 
 ```bash
-sudo cloudflared service install
-sudo launchctl start com.cloudflare.cloudflared
+# Start
+docker compose up -d
+
+# Stop
+docker compose down
+
+# View logs
+docker compose logs -f
+
+# Rebuild after server code changes
+docker compose up -d --build server
 ```
 
-Add a restart policy to the Docker container so it comes back up after a reboot:
+The SQLite database lives in the `db_data` Docker volume and survives `down`/`up`
+cycles. To inspect or back it up:
 
 ```bash
-docker run -d --restart unless-stopped ...
-```
-
-Or update an existing container's restart policy without recreating it:
-
-```bash
-docker update --restart unless-stopped gc-games
+# Copy the DB out of the volume to your local machine
+docker compose cp server:/app/data/gc-games.db ./gc-games-backup.db
 ```
 
 ---
@@ -183,9 +126,9 @@ docker update --restart unless-stopped gc-games
 
 | Symptom | Fix |
 |---------|-----|
-| `JWT_SECRET environment variable is required` | Pass `-e JWT_SECRET=...` to `docker run` |
-| CORS errors in the browser | Check `FRONTEND_URL` matches your Pages URL exactly (no trailing slash) |
-| SQLite errors on startup | Ensure `server/data/` exists locally before mounting |
-| Tunnel URL not reachable | Check `cloudflared tunnel run` is still running; verify DNS with `dig api.yourdomain.com` |
-| Container exits immediately | Run without `-d` to see the logs: `docker run --rm -it ...` |
-| `VITE_API_URL` not picked up | Remember it's baked in at build time — a redeploy is required after changing it |
+| `JWT_SECRET environment variable is required` | Check your `.env` file is at the repo root and has `JWT_SECRET` set |
+| CORS errors in the browser | Check `FRONTEND_URL` in `.env` matches your Pages URL exactly (no trailing slash) |
+| Tunnel shows "failed to connect" | Verify `TUNNEL_TOKEN` in `.env` matches what the Cloudflare dashboard shows |
+| Public hostname returns 502 | Check the service URL is `http://server:3001` (not `localhost`) in the tunnel config |
+| `VITE_API_URL` not picked up | It's baked in at build time — a Pages redeploy is required after changing it |
+| Lost the DB | It's in Docker volume `gc-games_db_data` — only `docker volume rm` deletes it |

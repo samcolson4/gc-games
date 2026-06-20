@@ -1,0 +1,21 @@
+services:
+  server:
+    build: ./server
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
+    volumes:
+      - db_data:/app/data
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  db_data:
