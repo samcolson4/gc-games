@@ -15,6 +15,9 @@ import {
   GameHistorySection,
   useNarrowLayout,
 } from "./editorial/ScorecardShared";
+import { useAuth } from "../contexts/AuthContext";
+import { PlayerSelect } from "./PlayerSelect";
+import { ApiUser, api } from "../utils/api";
 
 const PLAYER_KEY = "mexicanTrainPlayers";
 const SCORE_KEY = "mexicanTrainScores";
@@ -34,7 +37,9 @@ function MexicanTrain() {
   const [history, setHistory] = useState<GameHistoryRecord[]>([]);
   const [draftPlayer, setDraftPlayer] = useState("");
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<ApiUser[] | null>(null);
   const isNarrow = useNarrowLayout();
+  const { user } = useAuth();
 
   useEffect(() => {
     const storedPlayers = JSON.parse(
@@ -186,7 +191,7 @@ function MexicanTrain() {
     localStorage.setItem(SCORE_KEY, JSON.stringify([]));
   };
 
-  const handleFinishGame = () => {
+  const handleFinishGame = async () => {
     const { history: newHistory, clearedScores } = finishGame(
       HISTORY_KEY,
       SCORE_KEY,
@@ -196,6 +201,24 @@ function MexicanTrain() {
     setHistory(newHistory);
     setScores(clearedScores.length ? clearedScores : [Array(players.length).fill("")]);
     setNumRounds(clearedScores.length || 1);
+
+    if (user && selectedUsers) {
+      try {
+        const { id: gameId } = await api.createGame("mexican_train", selectedUsers.map((u) => u.id));
+        const scoreRows: { user_id: number; round_number: number; value: number }[] = [];
+        scores.forEach((round, roundIndex) => {
+          selectedUsers.forEach((u, playerIndex) => {
+            const val = parseInt(round[playerIndex] || "0", 10);
+            if (!isNaN(val)) scoreRows.push({ user_id: u.id, round_number: roundIndex + 1, value: val });
+          });
+        });
+        if (scoreRows.length > 0) await api.submitScores(gameId, scoreRows);
+        await api.completeGame(gameId);
+      } catch {
+        // silent — localStorage already saved it
+      }
+      setSelectedUsers(null);
+    }
   };
 
   const gridCols = `minmax(58px, auto) repeat(${activeCount || 1}, minmax(80px, 1fr))`;
@@ -215,8 +238,7 @@ function MexicanTrain() {
               style={{
                 marginTop: 36,
                 borderTop: `2px solid ${colors.ink}`,
-                paddingTop: 48,
-                textAlign: "center",
+                paddingTop: 36,
               }}
             >
               <div style={editorialStyles.eyebrow}>No game in progress</div>
@@ -229,8 +251,20 @@ function MexicanTrain() {
                   color: colors.ink,
                 }}
               >
-                Enter player names to begin
+                {user ? "Select players to begin" : "Enter player names to begin"}
               </h3>
+              {user ? (
+                <PlayerSelect
+                  onConfirm={(selected) => {
+                    setSelectedUsers(selected);
+                    const newPlayers = selected.map((u, i) => ({ name: u.display_name, id: i }));
+                    newPlayers.push({ name: "", id: selected.length });
+                    setPlayers(newPlayers);
+                    setNextPlayerId(selected.length + 1);
+                    localStorage.setItem(PLAYER_KEY, JSON.stringify(newPlayers.map((p) => p.name)));
+                  }}
+                />
+              ) : (
               <div
                 style={{
                   display: "flex",
@@ -261,6 +295,7 @@ function MexicanTrain() {
                   Add Player
                 </button>
               </div>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 28, borderTop: `2px solid ${colors.ink}` }}>

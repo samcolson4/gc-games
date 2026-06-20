@@ -20,6 +20,9 @@ import {
   GameHistorySection,
   useNarrowLayout,
 } from "./editorial/ScorecardShared";
+import { useAuth } from "../contexts/AuthContext";
+import { PlayerSelect } from "./PlayerSelect";
+import { ApiUser, api } from "../utils/api";
 
 const PLAYER_KEY = "rummyPlayers";
 const SCORE_KEY = "rummyScores";
@@ -34,7 +37,9 @@ function Rummy() {
   const [history, setHistory] = useState<GameHistoryRecord[]>([]);
   const [draftPlayer, setDraftPlayer] = useState("");
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<ApiUser[] | null>(null);
   const isNarrow = useNarrowLayout();
+  const { user } = useAuth();
 
   useEffect(() => {
     const { players: initialPlayers, scores: initialScores } = getStoredData(PLAYER_KEY, SCORE_KEY);
@@ -111,7 +116,7 @@ function Rummy() {
     }
   };
 
-  const handleFinishGame = () => {
+  const handleFinishGame = async () => {
     const { history: newHistory, clearedScores } = finishGame(
       HISTORY_KEY,
       SCORE_KEY,
@@ -120,6 +125,24 @@ function Rummy() {
     );
     setHistory(newHistory);
     setScores(clearedScores);
+
+    if (user && selectedUsers) {
+      try {
+        const { id: gameId } = await api.createGame("rummy", selectedUsers.map((u) => u.id));
+        const scoreRows: { user_id: number; round_number: number; value: number }[] = [];
+        scores.forEach((round, roundIndex) => {
+          selectedUsers.forEach((u, playerIndex) => {
+            const val = parseInt(round[playerIndex] || "0", 10);
+            if (!isNaN(val)) scoreRows.push({ user_id: u.id, round_number: roundIndex + 1, value: val });
+          });
+        });
+        if (scoreRows.length > 0) await api.submitScores(gameId, scoreRows);
+        await api.completeGame(gameId);
+      } catch {
+        // silent — localStorage already saved it
+      }
+      setSelectedUsers(null);
+    }
   };
 
   const getEmojiRanking = (roundIndex: number): Record<number, string> => {
@@ -172,8 +195,7 @@ function Rummy() {
               style={{
                 marginTop: 36,
                 borderTop: `2px solid ${colors.ink}`,
-                paddingTop: 48,
-                textAlign: "center",
+                paddingTop: 36,
               }}
             >
               <div style={editorialStyles.eyebrow}>No game in progress</div>
@@ -186,38 +208,51 @@ function Rummy() {
                   color: colors.ink,
                 }}
               >
-                Enter player names to begin
+                {user ? "Select players to begin" : "Enter player names to begin"}
               </h3>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  gap: 10,
-                  flexWrap: "wrap",
-                }}
-              >
-                <input
-                  type="text"
-                  value={draftPlayer}
-                  onChange={(e) => setDraftPlayer(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addPlayer()}
-                  placeholder="Player 1"
-                  style={{
-                    ...editorialStyles.addPlayerInput,
-                    fontSize: 16,
-                    width: 260,
-                    textAlign: "center",
-                    padding: "13px 16px",
+              {user ? (
+                <PlayerSelect
+                  maxPlayers={6}
+                  onConfirm={(selected) => {
+                    setSelectedUsers(selected);
+                    const names = Array(6).fill("");
+                    selected.forEach((u, i) => { names[i] = u.display_name; });
+                    localStorage.setItem(PLAYER_KEY, JSON.stringify(names));
+                    setPlayers(names);
                   }}
                 />
-                <button
-                  onClick={addPlayer}
-                  style={{ ...editorialStyles.btnPrimary, padding: "14px 22px" }}
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
                 >
-                  Add Player
-                </button>
-              </div>
+                  <input
+                    type="text"
+                    value={draftPlayer}
+                    onChange={(e) => setDraftPlayer(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+                    placeholder="Player 1"
+                    style={{
+                      ...editorialStyles.addPlayerInput,
+                      fontSize: 16,
+                      width: 260,
+                      textAlign: "center",
+                      padding: "13px 16px",
+                    }}
+                  />
+                  <button
+                    onClick={addPlayer}
+                    style={{ ...editorialStyles.btnPrimary, padding: "14px 22px" }}
+                  >
+                    Add Player
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 28, borderTop: `2px solid ${colors.ink}` }}>

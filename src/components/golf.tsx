@@ -20,6 +20,9 @@ import {
   GameHistorySection,
   useNarrowLayout,
 } from "./editorial/ScorecardShared";
+import { useAuth } from "../contexts/AuthContext";
+import { PlayerSelect } from "./PlayerSelect";
+import { ApiUser, api } from "../utils/api";
 
 const PLAYER_KEY = "golfPlayers";
 const SCORE_KEY = "golfScores";
@@ -34,7 +37,9 @@ function Golf() {
   const [history, setHistory] = useState<GameHistoryRecord[]>([]);
   const [draftPlayer, setDraftPlayer] = useState("");
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<ApiUser[] | null>(null);
   const isNarrow = useNarrowLayout();
+  const { user } = useAuth();
 
   useEffect(() => {
     const { players: storedPlayers, scores: storedScores } = getStoredData(PLAYER_KEY, SCORE_KEY);
@@ -133,7 +138,7 @@ function Golf() {
     setNumRounds(1);
   };
 
-  const handleFinishGame = () => {
+  const handleFinishGame = async () => {
     const { history: newHistory, clearedScores } = finishGame(
       HISTORY_KEY,
       SCORE_KEY,
@@ -143,6 +148,24 @@ function Golf() {
     setHistory(newHistory);
     setScores(clearedScores.length ? clearedScores : [Array(MAX_PLAYERS).fill("")]);
     setNumRounds(clearedScores.length || 1);
+
+    if (user && selectedUsers) {
+      try {
+        const { id: gameId } = await api.createGame("golf", selectedUsers.map((u) => u.id));
+        const scoreRows: { user_id: number; round_number: number; value: number }[] = [];
+        scores.forEach((round, roundIndex) => {
+          selectedUsers.forEach((u, playerIndex) => {
+            const val = parseInt(round[playerIndex] || "0", 10);
+            if (!isNaN(val)) scoreRows.push({ user_id: u.id, round_number: roundIndex + 1, value: val });
+          });
+        });
+        if (scoreRows.length > 0) await api.submitScores(gameId, scoreRows);
+        await api.completeGame(gameId);
+      } catch {
+        // silent — localStorage already saved it
+      }
+      setSelectedUsers(null);
+    }
   };
 
   const gridCols = `minmax(58px, auto) repeat(${activeCount || 1}, minmax(80px, 1fr))`;
@@ -162,8 +185,7 @@ function Golf() {
               style={{
                 marginTop: 36,
                 borderTop: `2px solid ${colors.ink}`,
-                paddingTop: 48,
-                textAlign: "center",
+                paddingTop: 36,
               }}
             >
               <div style={editorialStyles.eyebrow}>No game in progress</div>
@@ -176,8 +198,20 @@ function Golf() {
                   color: colors.ink,
                 }}
               >
-                Enter player names to begin
+                {user ? "Select players to begin" : "Enter player names to begin"}
               </h3>
+              {user ? (
+                <PlayerSelect
+                  maxPlayers={MAX_PLAYERS}
+                  onConfirm={(selected) => {
+                    setSelectedUsers(selected);
+                    const names = Array(MAX_PLAYERS).fill("");
+                    selected.forEach((u, i) => { names[i] = u.display_name; });
+                    localStorage.setItem(PLAYER_KEY, JSON.stringify(names));
+                    setPlayers(names);
+                  }}
+                />
+              ) : (
               <div
                 style={{
                   display: "flex",
@@ -208,6 +242,7 @@ function Golf() {
                   Add Player
                 </button>
               </div>
+              )}
             </div>
           ) : (
             <div style={{ marginTop: 28, borderTop: `2px solid ${colors.ink}` }}>

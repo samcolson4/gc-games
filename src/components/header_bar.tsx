@@ -2,6 +2,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { colors, fonts } from "../styles/tokens";
 import { getLeaderInfo, LeaderInfo } from "../utils/scoreHelpers";
+import { useAuth } from "../contexts/AuthContext";
+import { AuthModal } from "./AuthModal";
 
 const GAME_ROUTES: Record<string, { playerKey: string; scoreKey: string; label: string }> = {
   rummy: { playerKey: "rummyPlayers", scoreKey: "rummyScores", label: "Rummy" },
@@ -43,6 +45,8 @@ function HeaderBar() {
   const location = useLocation();
   const activePage = location.pathname === "/" ? "rummy" : location.pathname.slice(1);
   const [leader, setLeader] = useState<LeaderInfo | null>(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const { user, logout, loading: authLoading } = useAuth();
 
   const refreshLeader = () => {
     const game = GAME_ROUTES[activePage];
@@ -139,29 +143,76 @@ function HeaderBar() {
               </div>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div
-              style={{
-                fontSize: 11,
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: colors.meta3,
-                fontWeight: 600,
-              }}
-            >
-              Currently Leading
+          <div style={{ textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: colors.meta3,
+                  fontWeight: 600,
+                }}
+              >
+                Currently Leading
+              </div>
+              <div
+                style={{
+                  fontSize: 15,
+                  color: colors.ink,
+                  fontWeight: 600,
+                  marginTop: 3,
+                }}
+              >
+                {leaderChip}
+              </div>
             </div>
-            <div
-              style={{
-                fontSize: 15,
-                color: colors.ink,
-                fontWeight: 600,
-                marginTop: 3,
-              }}
-            >
-              {leaderChip}
-            </div>
+            {!authLoading && (
+              user ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontFamily: fonts.franklin, fontSize: 12, color: colors.meta3 }}>
+                    {user.display_name}
+                  </span>
+                  <button
+                    onClick={logout}
+                    style={{
+                      fontFamily: fonts.franklin,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      background: "none",
+                      border: `1px solid ${colors.inputBorder}`,
+                      color: colors.meta3,
+                      cursor: "pointer",
+                      padding: "3px 8px",
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowAuth(true)}
+                  style={{
+                    fontFamily: fonts.franklin,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    background: colors.ink,
+                    color: colors.paper,
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 10px",
+                  }}
+                >
+                  Sign in
+                </button>
+              )
+            )}
           </div>
+          {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
         </div>
 
         {/* Masthead */}
