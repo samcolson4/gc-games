@@ -27,3 +27,6 @@ server/dist/
 *.njsproj
 *.sln
 *.sw?
+
+.env
+.env.example
