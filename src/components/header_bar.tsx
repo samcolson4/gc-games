@@ -54,13 +54,9 @@ function HeaderBar() {
     { to: "/", key: "rummy", label: "Rummy" },
     { to: "/golf", key: "golf", label: "Golf" },
     { to: "/mexican-train", key: "mexican-train", label: "Mexican Train" },
-    { to: "/suburb", key: "suburb", label: "Suburb" },
-    { to: "/nz", key: "nz", label: "NZ" },
   ];
 
   const isScorePage = !!GAME_ROUTES[activePage];
-  const isSuburb = activePage === "suburb";
-  const isNz = activePage === "nz";
 
   let liveLabel = "STANDBY";
   let liveLabelColor: string = colors.meta3;
@@ -74,14 +70,6 @@ function HeaderBar() {
     dotColor = colors.accent;
     liveHeadline = `${leader.name} leads with ${leader.total}`;
     liveMeta = `· ${leader.playerCount} players · ${leader.roundCount} rounds`;
-  } else if (isSuburb) {
-    liveLabel = "MAP";
-    liveHeadline = "Suburbs reference map";
-    liveMeta = "· drag to move · scroll to zoom";
-  } else if (isNz) {
-    liveLabel = "FEATURE";
-    liveHeadline = "New Zealand";
-    liveMeta = "· feature presentation";
   }
 
   const leaderChip =

@@ -4,6 +4,7 @@ services:
     environment:
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}
+      - FRONTEND_URL_NOWWW=${FRONTEND_URL_NOWWW}
     volumes:
       - db_data:/app/data
     restart: unless-stopped

@@ -6,8 +6,6 @@ import RummyMobile from './components/rummy_mobile';
 import Golf from './components/golf';
 import MexicanTrain from './components/mexican_train';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import NewZealandVideo from './components/nz';
-import Suburb from './components/suburb';
 import Scorebook from './components/scorebook';
 import { useState, useEffect } from 'react';
 import { colors } from './styles/tokens';
@@ -60,8 +58,6 @@ function AppContent() {
           <Route path="/rummy-mobile" element={<RummyMobile />} />
           <Route path="/golf" element={<Golf />} />
           <Route path="/mexican-train" element={<MexicanTrain />} />
-          <Route path="/nz" element={<NewZealandVideo />} />
-          <Route path="/suburb" element={<Suburb />} />
           <Route path="/scorebook" element={<Scorebook />} />
         </Routes>
       </Box>
