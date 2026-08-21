@@ -28,7 +28,6 @@ const PLAYER_KEY = "golfPlayers";
 const SCORE_KEY = "golfScores";
 const HISTORY_KEY = "golfHistory";
 const MAX_PLAYERS = 6;
-const MAX_SCORE = 200;
 
 function Golf() {
   const [players, setPlayers] = useState<string[]>(Array(MAX_PLAYERS).fill(""));
@@ -71,7 +70,7 @@ function Golf() {
 
   const handleScoreChange = (playerIndex: number, roundIndex: number, score: string) => {
     const numScore = parseInt(score);
-    if (score && (isNaN(numScore) || numScore > MAX_SCORE)) return;
+    if (score && isNaN(numScore)) return;
 
     let updatedScores = [...scores];
     while (updatedScores.length <= roundIndex) {
