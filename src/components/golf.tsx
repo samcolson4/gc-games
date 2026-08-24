@@ -151,7 +151,7 @@ function Golf() {
     if (user && selectedUsers) {
       try {
         const { id: gameId } = await api.createGame("golf", selectedUsers.map((u) => u.id));
-        const scoreRows: { user_id: number; round_number: number; value: number }[] = [];
+        const scoreRows: { user_id: string; round_number: number; value: number }[] = [];
         scores.forEach((round, roundIndex) => {
           selectedUsers.forEach((u, playerIndex) => {
             const val = parseInt(round[playerIndex] || "0", 10);

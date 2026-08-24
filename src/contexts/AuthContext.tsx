@@ -1,9 +1,16 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { api, ApiUser } from "../utils/api";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db, usernameToEmail } from "../lib/firebase";
+import { ApiUser } from "../utils/api";
 
 interface AuthState {
   user: ApiUser | null;
-  token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, display_name: string, password: string) => Promise<void>;
@@ -12,47 +19,68 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+async function loadProfile(uid: string): Promise<ApiUser | null> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return null;
+  const data = snap.data() as { username: string; display_name: string; created_at: { toMillis(): number } };
+  return {
+    id: uid,
+    username: data.username,
+    display_name: data.display_name,
+    created_at: data.created_at?.toMillis() ?? Date.now(),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem("gc_token"));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      const profile = await loadProfile(firebaseUser.uid);
+      setUser(profile);
       setLoading(false);
-      return;
-    }
-    api.me()
-      .then(({ user }) => setUser(user))
-      .catch(() => {
-        localStorage.removeItem("gc_token");
-        setToken(null);
-      })
-      .finally(() => setLoading(false));
-  }, [token]);
+    });
+    return unsubscribe;
+  }, []);
 
   async function login(username: string, password: string) {
-    const res = await api.login(username, password);
-    localStorage.setItem("gc_token", res.token);
-    setToken(res.token);
-    setUser(res.user);
+    await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
   }
 
   async function register(username: string, display_name: string, password: string) {
-    const res = await api.register(username, display_name, password);
-    localStorage.setItem("gc_token", res.token);
-    setToken(res.token);
-    setUser(res.user);
+    const normalized = username.trim().toLowerCase();
+    let cred;
+    try {
+      cred = await createUserWithEmailAndPassword(auth, usernameToEmail(normalized), password);
+    } catch (err) {
+      if ((err as { code?: string }).code === "auth/email-already-in-use") {
+        throw new Error("Username already taken");
+      }
+      throw err;
+    }
+    const created_at = Date.now();
+    await setDoc(doc(db, "users", cred.user.uid), {
+      username: normalized,
+      display_name: display_name.trim(),
+      created_at: serverTimestamp(),
+    });
+    // Set state directly rather than waiting for onAuthStateChanged, which can
+    // fire before this setDoc above has committed and find no profile yet.
+    setUser({ id: cred.user.uid, username: normalized, display_name: display_name.trim(), created_at });
   }
 
   function logout() {
-    localStorage.removeItem("gc_token");
-    setToken(null);
-    setUser(null);
+    signOut(auth);
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

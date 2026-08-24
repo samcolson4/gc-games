@@ -9,18 +9,18 @@ interface PlayerSelectProps {
 
 export function PlayerSelect({ maxPlayers = 6, onConfirm }: PlayerSelectProps) {
   const [users, setUsers] = useState<ApiUser[]>([]);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.listUsers()
       .then(({ users }) => setUsers(users))
-      .catch(() => setError("Could not load players. Is the server running?"))
+      .catch(() => setError("Could not load players."))
       .finally(() => setLoading(false));
   }, []);
 
-  function toggle(id: number) {
+  function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
