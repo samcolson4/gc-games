@@ -343,7 +343,8 @@ function Rummy() {
                           style={{
                             borderBottom: `1px solid ${colors.ruleFaint}`,
                             display: "flex",
-                            position: "relative",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
                             backgroundColor:
                               focusedCell === cellKey ? colors.inputFocus : "transparent",
                           }}
@@ -352,14 +353,14 @@ function Rummy() {
                             <span
                               title="Dealer"
                               style={{
-                                position: "absolute",
-                                left: 6,
-                                top: 8,
+                                flex: "none",
+                                marginRight: 2,
                                 color: colors.accent,
                                 fontFamily: fonts.franklin,
                                 fontSize: 18,
                                 fontWeight: 700,
                                 lineHeight: 1,
+                                paddingTop: 6,
                                 pointerEvents: "none",
                               }}
                             >
@@ -376,7 +377,7 @@ function Rummy() {
                             onFocus={() => setFocusedCell(cellKey)}
                             onBlur={() => setFocusedCell(null)}
                             placeholder="—"
-                            style={editorialStyles.scoreInput}
+                            style={{ ...editorialStyles.scoreInput, width: "5ch", flex: "none" }}
                           />
                         </div>
                       );

@@ -78,7 +78,19 @@ function Golf() {
       updatedScores.push(Array(MAX_PLAYERS).fill(""));
     }
     updatedScores = updateScore(updatedScores, playerIndex, roundIndex, score, SCORE_KEY);
+
+    // Once the last round is filled in for everyone, open the next one.
+    const lastRound = updatedScores[updatedScores.length - 1];
+    if (
+      roundIndex === updatedScores.length - 1 &&
+      activePlayers.length > 0 &&
+      activePlayers.every(({ index }) => (lastRound[index] ?? "").trim() !== "")
+    ) {
+      updatedScores = [...updatedScores, Array(MAX_PLAYERS).fill("")];
+      localStorage.setItem(SCORE_KEY, JSON.stringify(updatedScores));
+    }
     setScores(updatedScores);
+    setNumRounds(updatedScores.length);
   };
 
   const addPlayer = () => {
@@ -339,7 +351,8 @@ function Golf() {
                           style={{
                             borderBottom: `1px solid ${colors.ruleFaint}`,
                             display: "flex",
-                            position: "relative",
+                            justifyContent: "flex-end",
+                            alignItems: "center",
                             backgroundColor:
                               focusedCell === cellKey ? colors.inputFocus : "transparent",
                           }}
@@ -348,14 +361,14 @@ function Golf() {
                             <span
                               title="Dealer"
                               style={{
-                                position: "absolute",
-                                left: 6,
-                                top: 8,
+                                flex: "none",
+                                marginRight: 2,
                                 color: colors.accent,
                                 fontFamily: fonts.franklin,
                                 fontSize: 18,
                                 fontWeight: 700,
                                 lineHeight: 1,
+                                paddingTop: 6,
                                 pointerEvents: "none",
                               }}
                             >
@@ -372,7 +385,7 @@ function Golf() {
                             onFocus={() => setFocusedCell(cellKey)}
                             onBlur={() => setFocusedCell(null)}
                             placeholder="—"
-                            style={editorialStyles.scoreInput}
+                            style={{ ...editorialStyles.scoreInput, width: "5ch", flex: "none" }}
                           />
                         </div>
                       );
