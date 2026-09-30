@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  getDealerIndex,
   updatePlayerName,
   updateScore,
   clearScores,
@@ -325,6 +324,7 @@ function RummyMobile() {
   };
 
   const activePlayers = players.filter((name) => name.trim() !== "");
+  const roundsWithScores = scores.filter((round) => round.some((s) => s.trim() !== "")).length;
   const hasAnyScores = scores.some((round) =>
     round.some((score) => score.trim() !== "")
   );
@@ -471,6 +471,12 @@ function RummyMobile() {
       {activePlayers.length > 0 && (
         <div>
           <div style={{ ...editorialStyles.eyebrow, marginBottom: 12 }}>Rounds</div>
+          <div style={{ fontFamily: fonts.franklin, fontSize: 13, color: colors.meta, marginBottom: 12 }}>
+            Next dealer:{" "}
+            <strong style={{ color: colors.ink }}>
+              {activePlayers[roundsWithScores % activePlayers.length]}
+            </strong>
+          </div>
           {[...Array(ROUNDS)].map((_, roundIndex) => {
             const roundScores = scores[roundIndex] || [];
             const hasScores = roundScores.some((score) => score.trim() !== "");
@@ -528,11 +534,6 @@ function RummyMobile() {
 
                 {activePlayers.map((playerName) => {
                   const originalIndex = players.indexOf(playerName);
-                  const isDealer =
-                    getDealerIndex(
-                      players.map((n, i) => (n.trim() !== "" ? i : -1)).filter((i) => i >= 0),
-                      roundIndex
-                    ) === originalIndex;
                   const score = roundScores[originalIndex] || "";
                   const cumulativeScore = hasScores
                     ? calculateCumulativeScore(
@@ -568,14 +569,6 @@ function RummyMobile() {
                           }}
                         >
                           {playerName}
-                          {isDealer && (
-                            <span
-                              title="Dealer"
-                              style={{ color: colors.accent, marginLeft: 4, fontFamily: fonts.franklin }}
-                            >
-                              *
-                            </span>
-                          )}
                         </span>
                         {emoji && <span style={{ fontSize: 18 }}>{emoji}</span>}
                       </div>

@@ -336,7 +336,6 @@ function Rummy() {
                     </div>
                     {activePlayers.map(({ index }) => {
                       const cellKey = `${roundIndex}-${index}`;
-                      const dealerIndex = getDealerIndex(activePlayers.map((p) => p.index), roundIndex);
                       return (
                         <div
                           key={cellKey}
@@ -349,24 +348,6 @@ function Rummy() {
                               focusedCell === cellKey ? colors.inputFocus : "transparent",
                           }}
                         >
-                          {dealerIndex === index && (
-                            <span
-                              title="Dealer"
-                              style={{
-                                flex: "none",
-                                marginRight: 2,
-                                color: colors.accent,
-                                fontFamily: fonts.franklin,
-                                fontSize: 18,
-                                fontWeight: 700,
-                                lineHeight: 1,
-                                paddingTop: 6,
-                                pointerEvents: "none",
-                              }}
-                            >
-                              *
-                            </span>
-                          )}
                           <input
                             type="text"
                             inputMode="numeric"
@@ -425,6 +406,22 @@ function Rummy() {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Next dealer */}
+              <div
+                style={{
+                  marginTop: 12,
+                  fontFamily: fonts.franklin,
+                  fontSize: 13,
+                  color: colors.meta,
+                  textAlign: "right",
+                }}
+              >
+                Next dealer:{" "}
+                <strong style={{ color: colors.ink }}>
+                  {players[getDealerIndex(activePlayers.map((p) => p.index), roundsPlayed)]}
+                </strong>
               </div>
 
               {/* Scores on the doors + emoji ranking */}

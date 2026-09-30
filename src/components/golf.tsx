@@ -344,7 +344,6 @@ function Golf() {
                     </div>
                     {activePlayers.map(({ index }) => {
                       const cellKey = `${roundIndex}-${index}`;
-                      const dealerIndex = getDealerIndex(activePlayers.map((p) => p.index), roundIndex);
                       return (
                         <div
                           key={cellKey}
@@ -357,24 +356,6 @@ function Golf() {
                               focusedCell === cellKey ? colors.inputFocus : "transparent",
                           }}
                         >
-                          {dealerIndex === index && (
-                            <span
-                              title="Dealer"
-                              style={{
-                                flex: "none",
-                                marginRight: 2,
-                                color: colors.accent,
-                                fontFamily: fonts.franklin,
-                                fontSize: 18,
-                                fontWeight: 700,
-                                lineHeight: 1,
-                                paddingTop: 6,
-                                pointerEvents: "none",
-                              }}
-                            >
-                              *
-                            </span>
-                          )}
                           <input
                             type="text"
                             inputMode="numeric"
@@ -434,52 +415,21 @@ function Golf() {
                 })}
               </div>
 
-              {/* Cumulative rows per round */}
-              {[...Array(numRounds)].map((_, roundIndex) => {
-                const hasScores = activePlayers.some(
-                  ({ index }) => scores[roundIndex]?.[index]?.trim() !== ""
-                );
-                if (!hasScores) return null;
-                return (
-                  <div key={`cumulative-${roundIndex}`} style={{ marginTop: 16 }}>
-                    <div
-                      style={{
-                        fontFamily: fonts.franklin,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        color: colors.faintLabel,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Round {roundIndex + 1} · Total Score
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
-                      <div style={{ padding: "8px 8px 8px 0", borderBottom: `1px solid ${colors.ruleFaint}`, fontFamily: fonts.franklin, fontSize: 13, color: "#8a8a8a" }}>
-                        Cumulative
-                      </div>
-                      {activePlayers.map(({ index }) => (
-                        <div
-                          key={index}
-                          style={{
-                            fontFamily: fonts.numbers,
-                            fontSize: 18,
-                            textAlign: "right",
-                            padding: "8px 6px",
-                            borderBottom: `1px solid ${colors.ruleFaint}`,
-                          }}
-                        >
-                          {calculateCumulativeScore(
-                            scores.map((row) => row[index]),
-                            roundIndex
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Next dealer */}
+              <div
+                style={{
+                  marginTop: 12,
+                  fontFamily: fonts.franklin,
+                  fontSize: 13,
+                  color: colors.meta,
+                  textAlign: "right",
+                }}
+              >
+                Next dealer:{" "}
+                <strong style={{ color: colors.ink }}>
+                  {players[getDealerIndex(activePlayers.map((p) => p.index), roundsPlayed)]}
+                </strong>
+              </div>
 
               <div
                 style={{
