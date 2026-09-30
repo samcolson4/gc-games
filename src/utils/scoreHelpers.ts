@@ -180,3 +180,9 @@ export function getLeaderInfo(playerKey: string, scoreKey: string): LeaderInfo |
     roundCount: scores.length,
   };
 }
+
+// Dealer starts as the first named player and rotates one seat per round.
+export function getDealerIndex(activeIndices: number[], roundIndex: number): number {
+  if (activeIndices.length === 0) return -1;
+  return activeIndices[roundIndex % activeIndices.length];
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, Fragment } from "react";
 import {
+  getDealerIndex,
   updatePlayerName,
   updateScore,
   clearScores,
@@ -335,16 +336,36 @@ function Rummy() {
                     </div>
                     {activePlayers.map(({ index }) => {
                       const cellKey = `${roundIndex}-${index}`;
+                      const dealerIndex = getDealerIndex(activePlayers.map((p) => p.index), roundIndex);
                       return (
                         <div
                           key={cellKey}
                           style={{
                             borderBottom: `1px solid ${colors.ruleFaint}`,
                             display: "flex",
+                            position: "relative",
                             backgroundColor:
                               focusedCell === cellKey ? colors.inputFocus : "transparent",
                           }}
                         >
+                          {dealerIndex === index && (
+                            <span
+                              title="Dealer"
+                              style={{
+                                position: "absolute",
+                                left: 6,
+                                top: 8,
+                                color: colors.accent,
+                                fontFamily: fonts.franklin,
+                                fontSize: 18,
+                                fontWeight: 700,
+                                lineHeight: 1,
+                                pointerEvents: "none",
+                              }}
+                            >
+                              *
+                            </span>
+                          )}
                           <input
                             type="text"
                             inputMode="numeric"

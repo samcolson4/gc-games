@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
+  getDealerIndex,
   updatePlayerName,
   updateScore,
   clearScores,
@@ -527,6 +528,11 @@ function RummyMobile() {
 
                 {activePlayers.map((playerName) => {
                   const originalIndex = players.indexOf(playerName);
+                  const isDealer =
+                    getDealerIndex(
+                      players.map((n, i) => (n.trim() !== "" ? i : -1)).filter((i) => i >= 0),
+                      roundIndex
+                    ) === originalIndex;
                   const score = roundScores[originalIndex] || "";
                   const cumulativeScore = hasScores
                     ? calculateCumulativeScore(
@@ -562,6 +568,14 @@ function RummyMobile() {
                           }}
                         >
                           {playerName}
+                          {isDealer && (
+                            <span
+                              title="Dealer"
+                              style={{ color: colors.accent, marginLeft: 4, fontFamily: fonts.franklin }}
+                            >
+                              *
+                            </span>
+                          )}
                         </span>
                         {emoji && <span style={{ fontSize: 18 }}>{emoji}</span>}
                       </div>
