@@ -6,6 +6,7 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  type User,
 } from "firebase/auth";
 import {
   collection,
@@ -41,6 +42,26 @@ async function loadProfile(uid: string): Promise<ApiUser | null> {
     display_name: data.display_name,
     created_at: data.created_at?.toMillis() ?? Date.now(),
   };
+}
+
+// Picks a free username from the account's displayName or email and creates the
+// usernames/ reservation and users/ profile together, as register() does.
+async function createMissingProfile(firebaseUser: User): Promise<ApiUser> {
+  const base = (firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "player")
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-]/g, "")
+    .padEnd(3, "0")
+    .slice(0, 16);
+  let username = base;
+  for (let i = 0; i < 20 && (await getDoc(doc(db, "usernames", username))).exists(); i++) {
+    username = `${base}${Math.floor(Math.random() * 1000)}`;
+  }
+  const display_name = firebaseUser.displayName || username;
+  const batch = writeBatch(db);
+  batch.set(doc(db, "usernames", username), { uid: firebaseUser.uid });
+  batch.set(doc(db, "users", firebaseUser.uid), { username, display_name, created_at: serverTimestamp() });
+  await batch.commit();
+  return { id: firebaseUser.uid, username, display_name, created_at: Date.now() };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -93,8 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Signed in, but couldn't load your profile (check the Firestore rules are deployed)");
     }
     if (!profile) {
-      await signOut(auth);
-      throw new Error("Signed in, but this account has no profile. Sign up again with a new username.");
+      // Firebase account exists but has no profile (e.g. a signup that was
+      // interrupted). Create one rather than leaving the user stuck.
+      try {
+        profile = await createMissingProfile(cred.user);
+      } catch (err) {
+        console.error("Failed to create profile", err);
+        await signOut(auth);
+        throw new Error("Signed in, but couldn't create your profile (check the Firestore rules are deployed)");
+      }
     }
     setUser(profile);
   }
