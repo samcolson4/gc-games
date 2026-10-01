@@ -15,9 +15,17 @@ export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Firebase Auth needs an email; usernames are mapped to a fake, non-deliverable
-// address so the app can keep its username/password UX while Firebase Auth
-// still enforces uniqueness for us (registration fails with auth/email-already-in-use).
-export function usernameToEmail(username: string): string {
-  return `${username.trim().toLowerCase()}@users.gc-games.local`;
+// Accounts created before real emails were collected signed up with a fake,
+// non-deliverable address derived from their username. Login falls back to
+// this when a username has no entry in the `usernames` collection yet.
+export function legacyUsernameToEmail(username: string): string {
+  return `${normalizeUsername(username)}@users.gc-games.local`;
 }
+
+// Usernames are unique case-insensitively; the lowercase form is the doc id
+// in `usernames/{username}` and the `username` field on `users/{uid}`.
+export function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
+export const USERNAME_PATTERN = /^[A-Za-z0-9_.-]{3,20}$/;

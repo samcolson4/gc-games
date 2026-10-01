@@ -10,20 +10,25 @@ export function AuthModal({ onClose }: AuthModalProps) {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (mode === "register" && password !== confirmPassword) {
+      setError("Passwords don't match");
+      return;
+    }
     setSubmitting(true);
     try {
       if (mode === "login") {
         await login(username.trim(), password);
       } else {
-        await register(username.trim(), displayName.trim(), password);
+        await register(username.trim(), email.trim(), password);
       }
       onClose();
     } catch (err) {
@@ -85,7 +90,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <input
             style={inputStyle}
-            placeholder="Username"
+            placeholder={mode === "register" ? "Username (shown to other players)" : "Username"}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -94,9 +99,11 @@ export function AuthModal({ onClose }: AuthModalProps) {
           {mode === "register" && (
             <input
               style={inputStyle}
-              placeholder="Display name (e.g. Sam)"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              type="email"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               required
             />
           )}
@@ -109,6 +116,17 @@ export function AuthModal({ onClose }: AuthModalProps) {
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             required
           />
+          {mode === "register" && (
+            <input
+              style={inputStyle}
+              type="password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
+          )}
 
           {error && (
             <div

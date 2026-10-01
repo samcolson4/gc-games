@@ -7,10 +7,26 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // usernames/{username} — maps a lowercase username to its owner's uid and
+    // sign-in email, so login can take a username. It must be readable before
+    // sign-in; `get` only (no `list`) so usernames can't be enumerated in bulk.
+    match /usernames/{username} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && username.matches('^[a-z0-9_.-]{3,20}$')
+        && request.resource.data.keys().hasOnly(['uid', 'email'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
     // users/{uid} — one profile doc per account, keyed by the Firebase Auth uid.
+    // A new profile's username must be reserved for this uid in usernames/.
     match /users/{uid} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
       allow update, delete: if false;
     }
 
