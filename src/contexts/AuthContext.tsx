@@ -54,8 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
-      const profile = await loadProfile(firebaseUser.uid);
-      setUser(profile);
+      try {
+        setUser(await loadProfile(firebaseUser.uid));
+      } catch (err) {
+        console.error("Failed to load profile", err);
+        setUser(null);
+      }
       setLoading(false);
     });
     return unsubscribe;
@@ -65,8 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Accounts created before real emails were collected only have a fake
     // address derived from their username, so a bare username still works.
     const signInEmail = email.includes("@") ? email.trim() : legacyUsernameToEmail(email);
+    let cred;
     try {
-      await signInWithEmailAndPassword(auth, signInEmail, password);
+      cred = await signInWithEmailAndPassword(auth, signInEmail, password);
     } catch (err) {
       const code = (err as { code?: string }).code;
       if (code === "auth/invalid-credential" || code === "auth/user-not-found" || code === "auth/wrong-password") {
@@ -75,6 +80,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (code === "auth/invalid-email") throw new Error("Enter a valid email address");
       throw err;
     }
+
+    // Signing in to Firebase isn't enough: the app also needs the users/{uid}
+    // profile. Without this check a missing or unreadable profile leaves the
+    // header on "Sign in" with no error.
+    let profile: ApiUser | null;
+    try {
+      profile = await loadProfile(cred.user.uid);
+    } catch (err) {
+      console.error("Failed to load profile", err);
+      await signOut(auth);
+      throw new Error("Signed in, but couldn't load your profile (check the Firestore rules are deployed)");
+    }
+    if (!profile) {
+      await signOut(auth);
+      throw new Error("Signed in, but this account has no profile. Sign up again with a new username.");
+    }
+    setUser(profile);
   }
 
   async function register(username: string, email: string, password: string) {
