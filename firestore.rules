@@ -7,10 +7,23 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // usernames/{username} — reserves a lowercase username for one uid so
+    // usernames stay unique; a create fails if the name is already taken.
+    match /usernames/{username} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && username.matches('^[a-z0-9_.-]{3,20}$')
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // users/{uid} — one profile doc per account, keyed by the Firebase Auth uid.
+    // A new profile's username must be reserved for this uid in usernames/.
     match /users/{uid} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
       allow update, delete: if false;
     }
 

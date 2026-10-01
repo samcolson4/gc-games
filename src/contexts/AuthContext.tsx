@@ -1,19 +1,31 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  updateProfile,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, usernameToEmail } from "../lib/firebase";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+import { auth, db, legacyUsernameToEmail, normalizeUsername, USERNAME_PATTERN } from "../lib/firebase";
 import { ApiUser } from "../utils/api";
 
 interface AuthState {
   user: ApiUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, display_name: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -49,30 +61,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  async function login(username: string, password: string) {
-    await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
-  }
-
-  async function register(username: string, display_name: string, password: string) {
-    const normalized = username.trim().toLowerCase();
-    let cred;
+  async function login(email: string, password: string) {
+    // Accounts created before real emails were collected only have a fake
+    // address derived from their username, so a bare username still works.
+    const signInEmail = email.includes("@") ? email.trim() : legacyUsernameToEmail(email);
     try {
-      cred = await createUserWithEmailAndPassword(auth, usernameToEmail(normalized), password);
+      await signInWithEmailAndPassword(auth, signInEmail, password);
     } catch (err) {
-      if ((err as { code?: string }).code === "auth/email-already-in-use") {
-        throw new Error("Username already taken");
+      const code = (err as { code?: string }).code;
+      if (code === "auth/invalid-credential" || code === "auth/user-not-found" || code === "auth/wrong-password") {
+        throw new Error("Incorrect email or password");
       }
+      if (code === "auth/invalid-email") throw new Error("Enter a valid email address");
       throw err;
     }
-    const created_at = Date.now();
-    await setDoc(doc(db, "users", cred.user.uid), {
-      username: normalized,
-      display_name: display_name.trim(),
-      created_at: serverTimestamp(),
-    });
+  }
+
+  async function register(username: string, email: string, password: string) {
+    const display_name = username.trim();
+    const normalized = normalizeUsername(username);
+    if (!USERNAME_PATTERN.test(display_name)) {
+      throw new Error("Username must be 3–20 characters: letters, numbers, . _ or -");
+    }
+    let cred;
+    try {
+      cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === "auth/email-already-in-use") throw new Error("An account with that email already exists");
+      if (code === "auth/invalid-email") throw new Error("Enter a valid email address");
+      if (code === "auth/weak-password") throw new Error("Password must be at least 6 characters");
+      throw err;
+    }
+
+    try {
+      // Legacy accounts may own this username without a usernames/ entry yet.
+      const legacy = await getDocs(query(collection(db, "users"), where("username", "==", normalized), limit(1)));
+      if (!legacy.empty) throw new Error("Username already taken");
+
+      // usernames/{username} reserves the name: its create fails if the doc
+      // already exists, so this batch settles two people racing for it.
+      const batch = writeBatch(db);
+      batch.set(doc(db, "usernames", normalized), { uid: cred.user.uid });
+      batch.set(doc(db, "users", cred.user.uid), {
+        username: normalized,
+        display_name,
+        created_at: serverTimestamp(),
+      });
+      await batch.commit();
+    } catch (err) {
+      await deleteUser(cred.user).catch(() => {});
+      if ((err as { code?: string }).code === "permission-denied") throw new Error("Username already taken");
+      throw err;
+    }
+
+    await updateProfile(cred.user, { displayName: display_name }).catch(() => {});
     // Set state directly rather than waiting for onAuthStateChanged, which can
-    // fire before this setDoc above has committed and find no profile yet.
-    setUser({ id: cred.user.uid, username: normalized, display_name: display_name.trim(), created_at });
+    // fire before the batch above has committed and find no profile yet.
+    setUser({ id: cred.user.uid, username: normalized, display_name, created_at: Date.now() });
   }
 
   function logout() {
