@@ -26,7 +26,7 @@ export function AuthModal({ onClose }: AuthModalProps) {
     setSubmitting(true);
     try {
       if (mode === "login") {
-        await login(username.trim(), password);
+        await login(email.trim(), password);
       } else {
         await register(username.trim(), email.trim(), password);
       }
@@ -88,25 +88,25 @@ export function AuthModal({ onClose }: AuthModalProps) {
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <input
-            style={inputStyle}
-            placeholder={mode === "register" ? "Username (shown to other players)" : "Username"}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-            required
-          />
           {mode === "register" && (
             <input
               style={inputStyle}
-              type="email"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              placeholder="Username (shown to other players)"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="nickname"
               required
             />
           )}
+          <input
+            style={inputStyle}
+            type={mode === "register" ? "email" : "text"}
+            placeholder="Email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete={mode === "register" ? "email" : "username"}
+            required
+          />
           <input
             style={inputStyle}
             type="password"

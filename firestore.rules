@@ -7,17 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // usernames/{username} — maps a lowercase username to its owner's uid and
-    // sign-in email, so login can take a username. It must be readable before
-    // sign-in; `get` only (no `list`) so usernames can't be enumerated in bulk.
+    // usernames/{username} — reserves a lowercase username for one uid so
+    // usernames stay unique; a create fails if the name is already taken.
     match /usernames/{username} {
-      allow get: if true;
-      allow list: if false;
+      allow read: if signedIn();
       allow create: if signedIn()
         && username.matches('^[a-z0-9_.-]{3,20}$')
-        && request.resource.data.keys().hasOnly(['uid', 'email'])
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid;
       allow update, delete: if false;
     }
 

@@ -15,7 +15,6 @@ import {
   limit,
   query,
   serverTimestamp,
-  setDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -25,7 +24,7 @@ import { ApiUser } from "../utils/api";
 interface AuthState {
   user: ApiUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -62,25 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  async function login(username: string, password: string) {
-    const normalized = normalizeUsername(username);
-    // usernames/{username} maps a username to the email Firebase Auth signs in with.
-    // Older accounts have no entry and use the fake email they were created with.
-    const mapping = await getDoc(doc(db, "usernames", normalized));
-    const email = mapping.exists() ? (mapping.data() as { email: string }).email : legacyUsernameToEmail(normalized);
-    let cred;
+  async function login(email: string, password: string) {
+    // Accounts created before real emails were collected only have a fake
+    // address derived from their username, so a bare username still works.
+    const signInEmail = email.includes("@") ? email.trim() : legacyUsernameToEmail(email);
     try {
-      cred = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, signInEmail, password);
     } catch (err) {
       const code = (err as { code?: string }).code;
       if (code === "auth/invalid-credential" || code === "auth/user-not-found" || code === "auth/wrong-password") {
-        throw new Error("Incorrect username or password");
+        throw new Error("Incorrect email or password");
       }
+      if (code === "auth/invalid-email") throw new Error("Enter a valid email address");
       throw err;
-    }
-    if (!mapping.exists()) {
-      // Backfill the mapping so a new signup can't claim this legacy username.
-      setDoc(doc(db, "usernames", normalized), { uid: cred.user.uid, email }).catch(() => {});
     }
   }
 
@@ -90,10 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!USERNAME_PATTERN.test(display_name)) {
       throw new Error("Username must be 3–20 characters: letters, numbers, . _ or -");
     }
-    if ((await getDoc(doc(db, "usernames", normalized))).exists()) {
-      throw new Error("Username already taken");
-    }
-
     let cred;
     try {
       cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
@@ -110,10 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const legacy = await getDocs(query(collection(db, "users"), where("username", "==", normalized), limit(1)));
       if (!legacy.empty) throw new Error("Username already taken");
 
-      // The usernames/ create fails if the doc already exists, so this batch is
-      // what actually reserves the username if two people race for it.
+      // usernames/{username} reserves the name: its create fails if the doc
+      // already exists, so this batch settles two people racing for it.
       const batch = writeBatch(db);
-      batch.set(doc(db, "usernames", normalized), { uid: cred.user.uid, email: cred.user.email });
+      batch.set(doc(db, "usernames", normalized), { uid: cred.user.uid });
       batch.set(doc(db, "users", cred.user.uid), {
         username: normalized,
         display_name,

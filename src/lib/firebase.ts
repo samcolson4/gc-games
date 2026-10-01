@@ -17,7 +17,7 @@ export const db = getFirestore(app);
 
 // Accounts created before real emails were collected signed up with a fake,
 // non-deliverable address derived from their username. Login falls back to
-// this when a username has no entry in the `usernames` collection yet.
+// this address when the user types a username instead of an email.
 export function legacyUsernameToEmail(username: string): string {
   return `${normalizeUsername(username)}@users.gc-games.local`;
 }
