@@ -20,7 +20,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { PlayerSelect } from "./PlayerSelect";
 import { ApiUser, api } from "../utils/api";
-import { GameType, storageKeys, winConditionPhrase } from "../games/gameTypes";
+import { GameType, gameRules, getMaxRounds, storageKeys, winConditionPhrase } from "../games/gameTypes";
 
 // Whole numbers, optionally negative; "-" alone is allowed mid-typing.
 const SCORE_PATTERN = /^-?\d*$/;
@@ -52,11 +52,14 @@ function Scorecard({ game }: { game: GameType }) {
     const storedIds: (string | null)[] = JSON.parse(localStorage.getItem(playerIdKey) || "[]");
     setPlayers(storedPlayers);
     setPlayerIds(storedPlayers.map((_, i) => storedIds[i] ?? null));
-    setScores(storedScores.length ? padRounds(storedScores, storedPlayers.length) : [[]]);
+    const capped = storedScores.slice(0, getMaxRounds(game));
+    setScores(capped.length ? padRounds(capped, storedPlayers.length) : [[]]);
     setHistory(getHistory(historyKey));
-  }, [playerKey, playerIdKey, scoreKey, historyKey]);
+  }, [playerKey, playerIdKey, scoreKey, historyKey, game]);
 
   const numRounds = scores.length;
+  const maxRounds = getMaxRounds(game);
+  const atRoundLimit = maxRounds !== undefined && numRounds >= maxRounds;
 
   const activePlayers = players
     .map((name, index) => ({ name: name.trim(), index }))
@@ -72,6 +75,11 @@ function Scorecard({ game }: { game: GameType }) {
     total: p.total,
   }));
   const leaderTotal = standings[0]?.total;
+
+  const allRoundsScored =
+    atRoundLimit &&
+    activeCount > 0 &&
+    scores.every((round) => activePlayers.every(({ index }) => (round[index] ?? "").trim() !== ""));
 
   const updatePlayers = (names: string[], ids: (string | null)[]) => {
     setPlayers(names);
@@ -100,6 +108,7 @@ function Scorecard({ game }: { game: GameType }) {
     // Once the last round is filled in for everyone, open the next one.
     const lastRound = updatedScores[updatedScores.length - 1];
     if (
+      (maxRounds === undefined || updatedScores.length < maxRounds) &&
       roundIndex === updatedScores.length - 1 &&
       activePlayers.length > 0 &&
       activePlayers.every(({ index }) => lastRound[index].trim() !== "")
@@ -142,6 +151,7 @@ function Scorecard({ game }: { game: GameType }) {
   };
 
   const addRound = () => {
+    if (atRoundLimit) return;
     updateScores([...scores, Array(players.length).fill("")]);
   };
 
@@ -213,7 +223,9 @@ function Scorecard({ game }: { game: GameType }) {
           <div style={editorialStyles.eyebrow}>The Scorecard</div>
           <h2 style={editorialStyles.gameTitle}>{game.label}</h2>
           <p style={editorialStyles.dek}>
-            {activeCount} player{activeCount !== 1 ? "s" : ""} · {roundsPlayed} round{roundsPlayed !== 1 ? "s" : ""} played · {winConditionPhrase(game.winCondition)}
+            {activeCount} player{activeCount !== 1 ? "s" : ""} · {maxRounds !== undefined
+              ? `${roundsPlayed} of ${maxRounds} rounds played`
+              : `${roundsPlayed} round${roundsPlayed !== 1 ? "s" : ""} played`} · {winConditionPhrase(game.winCondition)}
           </p>
 
           {activeCount === 0 ? (
@@ -333,15 +345,34 @@ function Scorecard({ game }: { game: GameType }) {
                         fontFamily: fonts.franklin,
                         fontSize: 13,
                         color: "#8a8a8a",
-                        padding: "0 8px 0 0",
+                        padding: "6px 8px 6px 0",
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
                         borderBottom: `1px solid ${colors.ruleFaint}`,
                         minHeight: 48,
+                        boxSizing: "border-box",
                       }}
                     >
-                      {roundIndex + 1}
+                      <span style={{ textAlign: "left" }}>
+                        {roundIndex + 1}
+                        {game.roundObjectives?.[roundIndex] && (
+                          <span
+                            style={{
+                              display: "block",
+                              fontFamily: fonts.serif,
+                              fontStyle: "italic",
+                              fontSize: 13,
+                              color: colors.meta,
+                              maxWidth: 130,
+                              lineHeight: 1.25,
+                              marginTop: 2,
+                            }}
+                          >
+                            {game.roundObjectives[roundIndex]}
+                          </span>
+                        )}
+                      </span>
                       {numRounds > 1 && (
                         <button
                           onClick={() => deleteRound(roundIndex)}
@@ -442,10 +473,16 @@ function Scorecard({ game }: { game: GameType }) {
                   textAlign: "right",
                 }}
               >
-                Next dealer:{" "}
-                <strong style={{ color: colors.ink }}>
-                  {players[getDealerIndex(activePlayers.map((p) => p.index), roundsPlayed)]}
-                </strong>
+                {allRoundsScored ? (
+                  <>All {maxRounds} rounds played. Finish &amp; log the game.</>
+                ) : (
+                  <>
+                    Next dealer:{" "}
+                    <strong style={{ color: colors.ink }}>
+                      {players[getDealerIndex(activePlayers.map((p) => p.index), roundsPlayed)]}
+                    </strong>
+                  </>
+                )}
               </div>
 
               <div
@@ -457,9 +494,11 @@ function Scorecard({ game }: { game: GameType }) {
                   marginTop: 24,
                 }}
               >
-                <button onClick={addRound} style={editorialStyles.btnPrimary}>
-                  + Add Round
-                </button>
+                {!atRoundLimit && (
+                  <button onClick={addRound} style={editorialStyles.btnPrimary}>
+                    + Add Round
+                  </button>
+                )}
                 <button onClick={removeLastRound} style={editorialStyles.btnOutline}>
                   Remove Last Round
                 </button>
@@ -546,6 +585,8 @@ function Scorecard({ game }: { game: GameType }) {
           standings={standings}
           gameName={game.label}
           winCondition={game.winCondition}
+          rules={gameRules(game)}
+          roundObjectives={game.roundObjectives}
           history={history}
           isNarrow={isNarrow}
         />

@@ -13,11 +13,29 @@ export interface GameType {
   winCondition: WinCondition;
   // Prefix for the in-progress card and history kept in localStorage.
   storagePrefix: string;
+  // What each round asks for, in order. Implies a round limit of its length.
+  roundObjectives?: string[];
+  // Round limit for games without objectives. Omit both for unlimited rounds.
+  maxRounds?: number;
 }
 
 export const GAME_TYPES: GameType[] = [
-  { id: "rummy", label: "Rummy", slug: "rummy", winCondition: "lowest", storagePrefix: "rummy" },
-  { id: "rummy_10", label: "Rummy 10", slug: "rummy-10", winCondition: "lowest", storagePrefix: "rummy10" },
+  {
+    id: "rummy",
+    label: "Buying Rummy",
+    slug: "rummy",
+    winCondition: "lowest",
+    storagePrefix: "rummy",
+    roundObjectives: [
+      "A set of three",
+      "A run of three",
+      "A set and a run",
+      "A set of four",
+      "A run of four",
+      "Everything down at once",
+    ],
+  },
+  { id: "rummy_10", label: "Rummy 10", slug: "rummy-10", winCondition: "lowest", storagePrefix: "rummy10", maxRounds: 10 },
   { id: "golf", label: "Golf", slug: "golf", winCondition: "lowest", storagePrefix: "golf" },
   { id: "mexican_train", label: "Mexican Train", slug: "mexican-train", winCondition: "lowest", storagePrefix: "mexicanTrain" },
 ];
@@ -50,4 +68,18 @@ export function rankByTotal<T extends { total: number }>(winCondition: WinCondit
 
 export function winConditionPhrase(winCondition: WinCondition): string {
   return winCondition === "lowest" ? "lowest score wins" : "highest score wins";
+}
+
+export function getMaxRounds(game: GameType): number | undefined {
+  return game.maxRounds ?? game.roundObjectives?.length;
+}
+
+// The game's rules as display lines, e.g. ["6 rounds", "Lowest score wins"].
+export function gameRules(game: GameType): string[] {
+  const phrase = winConditionPhrase(game.winCondition);
+  const rules: string[] = [];
+  const maxRounds = getMaxRounds(game);
+  if (maxRounds !== undefined) rules.push(`${maxRounds} rounds`);
+  rules.push(phrase.charAt(0).toUpperCase() + phrase.slice(1));
+  return rules;
 }

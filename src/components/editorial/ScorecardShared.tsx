@@ -11,11 +11,21 @@ interface StandingsRailProps {
   standings: { name: string; total: number }[];
   gameName: string;
   winCondition: WinCondition;
+  rules: string[];
+  roundObjectives?: string[];
   history: GameHistoryRecord[];
   isNarrow?: boolean;
 }
 
-export function StandingsRail({ standings, gameName, winCondition, history, isNarrow }: StandingsRailProps) {
+export function StandingsRail({
+  standings,
+  gameName,
+  winCondition,
+  rules,
+  roundObjectives,
+  history,
+  isNarrow,
+}: StandingsRailProps) {
   const leader = standings[0];
   const rest = standings.slice(1);
   const seasonStats = getSeasonStats(history);
@@ -182,6 +192,62 @@ export function StandingsRail({ standings, gameName, winCondition, history, isNa
           The table is empty. Add players and the standings will keep score, ranked from first to last.
         </p>
       )}
+
+      <div style={{ marginTop: 32, paddingTop: 18, borderTop: `2px solid ${colors.ink}` }}>
+        <div
+          style={{
+            fontFamily: fonts.franklin,
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: colors.accent,
+          }}
+        >
+          The Rules
+        </div>
+        <div
+          style={{
+            fontFamily: fonts.serif,
+            fontStyle: "italic",
+            fontSize: 14,
+            color: colors.meta3,
+            marginTop: 5,
+            paddingBottom: 12,
+            borderBottom: `1px solid ${colors.ink}`,
+          }}
+        >
+          {rules.join(" · ")}
+        </div>
+        {roundObjectives?.map((objective, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 11,
+              padding: "10px 0",
+              borderBottom: `1px solid ${colors.ruleFaint}`,
+            }}
+          >
+            <span
+              style={{
+                fontFamily: fonts.franklin,
+                fontSize: 12,
+                fontWeight: 700,
+                color: colors.rank,
+                flex: "none",
+                width: 14,
+              }}
+            >
+              {i + 1}
+            </span>
+            <span style={{ fontFamily: fonts.serif, fontSize: 17, color: colors.ink }}>
+              {objective}
+            </span>
+          </div>
+        ))}
+      </div>
 
       {history.length > 0 && (
         <div style={{ marginTop: 32, paddingTop: 18, borderTop: `2px solid ${colors.ink}` }}>
