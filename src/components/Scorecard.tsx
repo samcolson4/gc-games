@@ -2,11 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   getDealerIndex,
   calculateCumulativeScore,
-  clearPlayersAndScores,
-  clearScores,
   getStoredData,
-  updatePlayerName,
-  updateScore,
   getPlayerTotals,
   finishGame,
   getHistory,
@@ -24,30 +20,43 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { PlayerSelect } from "./PlayerSelect";
 import { ApiUser, api } from "../utils/api";
+import { GameType, storageKeys, winConditionPhrase } from "../games/gameTypes";
 
-const PLAYER_KEY = "golfPlayers";
-const SCORE_KEY = "golfScores";
-const HISTORY_KEY = "golfHistory";
-const MAX_PLAYERS = 6;
+// Whole numbers, optionally negative; "-" alone is allowed mid-typing.
+const SCORE_PATTERN = /^-?\d*$/;
 
-function Golf() {
-  const [players, setPlayers] = useState<string[]>(Array(MAX_PLAYERS).fill(""));
-  const [scores, setScores] = useState<string[][]>([]);
-  const [numRounds, setNumRounds] = useState(1);
+function save(key: string, value: unknown) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+// Pads every round to one cell per player seat.
+function padRounds(scores: string[][], seats: number): string[][] {
+  return scores.map((row) => Array.from({ length: seats }, (_, i) => row[i] ?? ""));
+}
+
+function Scorecard({ game }: { game: GameType }) {
+  const { playerKey, playerIdKey, scoreKey, historyKey } = storageKeys(game);
+  // One seat per player; an empty name is a vacated seat. playerIds holds the
+  // account behind each seat when players were picked from accounts.
+  const [players, setPlayers] = useState<string[]>([]);
+  const [playerIds, setPlayerIds] = useState<(string | null)[]>([]);
+  const [scores, setScores] = useState<string[][]>([[]]);
   const [history, setHistory] = useState<GameHistoryRecord[]>([]);
   const [draftPlayer, setDraftPlayer] = useState("");
   const [focusedCell, setFocusedCell] = useState<string | null>(null);
-  const [selectedUsers, setSelectedUsers] = useState<ApiUser[] | null>(null);
   const isNarrow = useNarrowLayout();
   const { user } = useAuth();
 
   useEffect(() => {
-    const { players: storedPlayers, scores: storedScores } = getStoredData(PLAYER_KEY, SCORE_KEY);
+    const { players: storedPlayers, scores: storedScores } = getStoredData(playerKey, scoreKey);
+    const storedIds: (string | null)[] = JSON.parse(localStorage.getItem(playerIdKey) || "[]");
     setPlayers(storedPlayers);
-    setScores(storedScores.length ? storedScores : [Array(MAX_PLAYERS).fill("")]);
-    setNumRounds(storedScores.length || 1);
-    setHistory(getHistory(HISTORY_KEY));
-  }, []);
+    setPlayerIds(storedPlayers.map((_, i) => storedIds[i] ?? null));
+    setScores(storedScores.length ? padRounds(storedScores, storedPlayers.length) : [[]]);
+    setHistory(getHistory(historyKey));
+  }, [playerKey, playerIdKey, scoreKey, historyKey]);
+
+  const numRounds = scores.length;
 
   const activePlayers = players
     .map((name, index) => ({ name: name.trim(), index }))
@@ -58,125 +67,140 @@ function Golf() {
     round.some((s) => s.trim() !== "")
   ).length;
 
-  const standings = getPlayerTotals(players, scores).map((p) => ({
+  const standings = getPlayerTotals(players, scores, game.winCondition).map((p) => ({
     name: p.name,
     total: p.total,
   }));
   const leaderTotal = standings[0]?.total;
 
+  const updatePlayers = (names: string[], ids: (string | null)[]) => {
+    setPlayers(names);
+    setPlayerIds(ids);
+    save(playerKey, names);
+    save(playerIdKey, ids);
+  };
+
+  const updateScores = (next: string[][]) => {
+    setScores(next);
+    save(scoreKey, next);
+  };
+
   const handleNameChange = (index: number, name: string) => {
-    const newPlayers = updatePlayerName(players, index, name, PLAYER_KEY);
-    setPlayers(newPlayers);
+    const newPlayers = [...players];
+    newPlayers[index] = name;
+    updatePlayers(newPlayers, playerIds);
   };
 
   const handleScoreChange = (playerIndex: number, roundIndex: number, score: string) => {
-    const numScore = parseInt(score);
-    if (score && isNaN(numScore)) return;
+    if (!SCORE_PATTERN.test(score)) return;
 
-    let updatedScores = [...scores];
-    while (updatedScores.length <= roundIndex) {
-      updatedScores.push(Array(MAX_PLAYERS).fill(""));
-    }
-    updatedScores = updateScore(updatedScores, playerIndex, roundIndex, score, SCORE_KEY);
+    let updatedScores = padRounds(scores, players.length);
+    updatedScores[roundIndex][playerIndex] = score;
 
     // Once the last round is filled in for everyone, open the next one.
     const lastRound = updatedScores[updatedScores.length - 1];
     if (
       roundIndex === updatedScores.length - 1 &&
       activePlayers.length > 0 &&
-      activePlayers.every(({ index }) => (lastRound[index] ?? "").trim() !== "")
+      activePlayers.every(({ index }) => lastRound[index].trim() !== "")
     ) {
-      updatedScores = [...updatedScores, Array(MAX_PLAYERS).fill("")];
-      localStorage.setItem(SCORE_KEY, JSON.stringify(updatedScores));
+      updatedScores = [...updatedScores, Array(players.length).fill("")];
     }
-    setScores(updatedScores);
-    setNumRounds(updatedScores.length);
+    updateScores(updatedScores);
   };
 
   const addPlayer = () => {
     const name = draftPlayer.trim();
     if (!name) return;
     const emptyIndex = players.findIndex((p) => p.trim() === "");
-    if (emptyIndex === -1) return;
-    handleNameChange(emptyIndex, name);
+    if (emptyIndex === -1) {
+      updatePlayers([...players, name], [...playerIds, null]);
+      updateScores(padRounds(scores, players.length + 1));
+    } else {
+      const newIds = [...playerIds];
+      newIds[emptyIndex] = null;
+      const newPlayers = [...players];
+      newPlayers[emptyIndex] = name;
+      updatePlayers(newPlayers, newIds);
+    }
     setDraftPlayer("");
   };
 
   const removePlayer = (index: number) => {
     const newPlayers = [...players];
     newPlayers[index] = "";
-    localStorage.setItem(PLAYER_KEY, JSON.stringify(newPlayers));
-    const newScores = scores.map((row) => {
-      const updated = [...row];
-      updated[index] = "";
-      return updated;
-    });
-    localStorage.setItem(SCORE_KEY, JSON.stringify(newScores));
-    setPlayers(newPlayers);
-    setScores(newScores);
+    const newIds = [...playerIds];
+    newIds[index] = null;
+    updatePlayers(newPlayers, newIds);
+    updateScores(
+      padRounds(scores, players.length).map((row) => {
+        const updated = [...row];
+        updated[index] = "";
+        return updated;
+      })
+    );
   };
 
   const addRound = () => {
-    setNumRounds((n) => n + 1);
-    setScores((prev) => [...prev, Array(MAX_PLAYERS).fill("")]);
+    updateScores([...scores, Array(players.length).fill("")]);
   };
 
   const removeLastRound = () => {
     if (numRounds <= 1) return;
-    const newScores = scores.slice(0, -1);
-    setScores(newScores);
-    setNumRounds(numRounds - 1);
-    localStorage.setItem(SCORE_KEY, JSON.stringify(newScores));
+    updateScores(scores.slice(0, -1));
   };
 
   const deleteRound = (roundIndex: number) => {
     if (numRounds <= 1) return;
-    const newScores = scores.filter((_, i) => i !== roundIndex);
-    setScores(newScores);
-    setNumRounds(numRounds - 1);
-    localStorage.setItem(SCORE_KEY, JSON.stringify(newScores));
+    updateScores(scores.filter((_, i) => i !== roundIndex));
   };
 
   const clearOnlyScores = () => {
-    const emptyScores = clearScores(SCORE_KEY, 1, MAX_PLAYERS);
-    setScores(emptyScores);
-    setNumRounds(1);
+    updateScores([Array(players.length).fill("")]);
   };
 
   const handleClearAll = () => {
-    const { emptyPlayers } = clearPlayersAndScores(PLAYER_KEY, SCORE_KEY);
-    setPlayers(emptyPlayers);
-    setScores([Array(MAX_PLAYERS).fill("")]);
-    setNumRounds(1);
+    updatePlayers([], []);
+    updateScores([[]]);
+  };
+
+  const startWithAccounts = (selected: ApiUser[]) => {
+    updatePlayers(
+      selected.map((u) => u.display_name),
+      selected.map((u) => u.id)
+    );
+    updateScores([Array(selected.length).fill("")]);
   };
 
   const handleFinishGame = async () => {
+    const finishedPlayers = players;
+    const finishedScores = scores;
     const { history: newHistory, clearedScores } = finishGame(
-      HISTORY_KEY,
-      SCORE_KEY,
-      players,
-      scores
+      historyKey,
+      scoreKey,
+      finishedPlayers,
+      finishedScores,
+      game.winCondition
     );
     setHistory(newHistory);
-    setScores(clearedScores.length ? clearedScores : [Array(MAX_PLAYERS).fill("")]);
-    setNumRounds(clearedScores.length || 1);
+    setScores(clearedScores);
 
-    if (user && selectedUsers) {
-      try {
-        const { id: gameId } = await api.createGame("golf", selectedUsers.map((u) => u.id));
-        const scoreRows: { user_id: string; round_number: number; value: number }[] = [];
-        scores.forEach((round, roundIndex) => {
-          selectedUsers.forEach((u, playerIndex) => {
-            const val = parseInt(round[playerIndex] || "0", 10);
-            if (!isNaN(val)) scoreRows.push({ user_id: u.id, round_number: roundIndex + 1, value: val });
-          });
+    // Also log to Firestore when every seated player is a known account.
+    const accountSeats = activePlayers.map(({ index }) => ({ index, id: playerIds[index] }));
+    if (!user || accountSeats.length < 2 || accountSeats.some((s) => !s.id)) return;
+    try {
+      const { id: gameId } = await api.createGame(game.id, accountSeats.map((s) => s.id!));
+      const scoreRows: { user_id: string; round_number: number; value: number }[] = [];
+      finishedScores.forEach((round, roundIndex) => {
+        accountSeats.forEach(({ index, id }) => {
+          const val = parseInt(round[index] ?? "", 10);
+          if (!isNaN(val)) scoreRows.push({ user_id: id!, round_number: roundIndex + 1, value: val });
         });
-        if (scoreRows.length > 0) await api.submitScores(gameId, scoreRows);
-        await api.completeGame(gameId);
-      } catch {
-        // silent — localStorage already saved it
-      }
-      setSelectedUsers(null);
+      });
+      if (scoreRows.length > 0) await api.submitScores(gameId, scoreRows);
+      await api.completeGame(gameId);
+    } catch {
+      // silent — localStorage already saved it
     }
   };
 
@@ -187,9 +211,9 @@ function Golf() {
       <div style={editorialStyles.twoColumnGrid(isNarrow)}>
         <section>
           <div style={editorialStyles.eyebrow}>The Scorecard</div>
-          <h2 style={editorialStyles.gameTitle}>Golf</h2>
+          <h2 style={editorialStyles.gameTitle}>{game.label}</h2>
           <p style={editorialStyles.dek}>
-            {activeCount} player{activeCount !== 1 ? "s" : ""} · {roundsPlayed} round{roundsPlayed !== 1 ? "s" : ""} played · lowest score wins
+            {activeCount} player{activeCount !== 1 ? "s" : ""} · {roundsPlayed} round{roundsPlayed !== 1 ? "s" : ""} played · {winConditionPhrase(game.winCondition)}
           </p>
 
           {activeCount === 0 ? (
@@ -213,16 +237,7 @@ function Golf() {
                 {user ? "Select players to begin" : "Enter player names to begin"}
               </h3>
               {user ? (
-                <PlayerSelect
-                  maxPlayers={MAX_PLAYERS}
-                  onConfirm={(selected) => {
-                    setSelectedUsers(selected);
-                    const names = Array(MAX_PLAYERS).fill("");
-                    selected.forEach((u, i) => { names[i] = u.display_name; });
-                    localStorage.setItem(PLAYER_KEY, JSON.stringify(names));
-                    setPlayers(names);
-                  }}
-                />
+                <PlayerSelect onConfirm={startWithAccounts} />
               ) : (
               <div
                 style={{
@@ -258,6 +273,7 @@ function Golf() {
             </div>
           ) : (
             <div style={{ marginTop: 28, borderTop: `2px solid ${colors.ink}` }}>
+              <div style={{ overflowX: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
                 <div
                   style={{
@@ -414,6 +430,7 @@ function Golf() {
                   );
                 })}
               </div>
+              </div>
 
               {/* Next dealer */}
               <div
@@ -520,15 +537,21 @@ function Golf() {
 
           <GameHistorySection
             history={history}
-            onDelete={(id) => setHistory(deleteHistory(HISTORY_KEY, id))}
-            onClearHistory={() => setHistory(clearHistory(HISTORY_KEY))}
+            onDelete={(id) => setHistory(deleteHistory(historyKey, id))}
+            onClearHistory={() => setHistory(clearHistory(historyKey))}
           />
         </section>
 
-        <StandingsRail standings={standings} gameName="Golf" history={history} isNarrow={isNarrow} />
+        <StandingsRail
+          standings={standings}
+          gameName={game.label}
+          winCondition={game.winCondition}
+          history={history}
+          isNarrow={isNarrow}
+        />
       </div>
     </div>
   );
 }
 
-export default Golf;
+export default Scorecard;

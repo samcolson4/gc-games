@@ -4,16 +4,7 @@ import { colors, fonts } from "../styles/tokens";
 import { getLeaderInfo, LeaderInfo } from "../utils/scoreHelpers";
 import { useAuth } from "../contexts/AuthContext";
 import { AuthModal } from "./AuthModal";
-
-const GAME_ROUTES: Record<string, { playerKey: string; scoreKey: string; label: string }> = {
-  rummy: { playerKey: "rummyPlayers", scoreKey: "rummyScores", label: "Rummy" },
-  golf: { playerKey: "golfPlayers", scoreKey: "golfScores", label: "Golf" },
-  "mexican-train": {
-    playerKey: "mexicanTrainPlayers",
-    scoreKey: "mexicanTrainScores",
-    label: "Mexican Train",
-  },
-};
+import { GAME_TYPES, getGameTypeBySlug, storageKeys } from "../games/gameTypes";
 
 function formatDate() {
   return new Date().toLocaleDateString("en-US", {
@@ -26,15 +17,16 @@ function formatDate() {
 
 function HeaderBar() {
   const location = useLocation();
-  const activePage = location.pathname === "/" ? "rummy" : location.pathname.slice(1);
+  const activePage = location.pathname.slice(1);
+  const activeGame = getGameTypeBySlug(activePage);
   const [leader, setLeader] = useState<LeaderInfo | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const { user, logout, loading: authLoading } = useAuth();
 
   const refreshLeader = () => {
-    const game = GAME_ROUTES[activePage];
-    if (game) {
-      setLeader(getLeaderInfo(game.playerKey, game.scoreKey));
+    if (activeGame) {
+      const { playerKey, scoreKey } = storageKeys(activeGame);
+      setLeader(getLeaderInfo(playerKey, scoreKey, activeGame.winCondition));
     } else {
       setLeader(null);
     }
@@ -50,13 +42,9 @@ function HeaderBar() {
     };
   }, [activePage]);
 
-  const navItems = [
-    { to: "/", key: "rummy", label: "Rummy" },
-    { to: "/golf", key: "golf", label: "Golf" },
-    { to: "/mexican-train", key: "mexican-train", label: "Mexican Train" },
-  ];
+  const navItems = GAME_TYPES.map((g) => ({ to: `/${g.slug}`, key: g.slug, label: g.label }));
 
-  const isScorePage = !!GAME_ROUTES[activePage];
+  const isScorePage = !!activeGame;
 
   let liveLabel = "STANDBY";
   let liveLabelColor: string = colors.meta3;

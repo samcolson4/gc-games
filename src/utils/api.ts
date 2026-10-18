@@ -14,6 +14,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
+import { getGameType, rankByTotal } from "../games/gameTypes";
 
 export interface ApiUser {
   id: string;
@@ -70,9 +71,11 @@ async function fetchGameSummary(gameId: string, game: GameDoc): Promise<ApiGameS
     rounds.add(s.round_number);
   });
 
-  const results = game.players
-    .map((p) => ({ display_name: p.display_name, total: totals.get(p.id) ?? 0 }))
-    .sort((a, b) => a.total - b.total);
+  const winCondition = getGameType(game.game_type)?.winCondition ?? "lowest";
+  const results = rankByTotal(
+    winCondition,
+    game.players.map((p) => ({ display_name: p.display_name, total: totals.get(p.id) ?? 0 }))
+  );
 
   return {
     id: gameId,

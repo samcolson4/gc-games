@@ -123,7 +123,7 @@ export const editorialStyles = {
   } as CSSProperties,
   twoColumnGrid: (isNarrow: boolean): CSSProperties => ({
     display: "grid",
-    gridTemplateColumns: isNarrow ? "1fr" : "1fr 312px",
+    gridTemplateColumns: isNarrow ? "minmax(0, 1fr)" : "minmax(0, 1fr) 312px",
     gap: isNarrow ? 32 : 48,
     padding: "34px 0 80px",
     alignItems: "start",

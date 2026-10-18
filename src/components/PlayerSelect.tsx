@@ -7,7 +7,7 @@ interface PlayerSelectProps {
   onConfirm: (players: ApiUser[]) => void;
 }
 
-export function PlayerSelect({ maxPlayers = 6, onConfirm }: PlayerSelectProps) {
+export function PlayerSelect({ maxPlayers = Infinity, onConfirm }: PlayerSelectProps) {
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);

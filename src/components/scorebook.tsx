@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
 import { colors, fonts } from "../styles/tokens";
 import { getStoredData, getPlayerTotals, getHistory, GameHistoryRecord } from "../utils/scoreHelpers";
-
-const GAMES = [
-  { label: "Rummy", playerKey: "rummyPlayers", scoreKey: "rummyScores", historyKey: "rummyHistory", lowWins: false },
-  { label: "Golf", playerKey: "golfPlayers", scoreKey: "golfScores", historyKey: "golfHistory", lowWins: true },
-  { label: "Mexican Train", playerKey: "mexicanTrainPlayers", scoreKey: "mexicanTrainScores", historyKey: "mexicanTrainHistory", lowWins: true },
-];
+import { GAME_TYPES, storageKeys } from "../games/gameTypes";
 
 function formatDate() {
   return new Date().toLocaleDateString("en-US", {
@@ -21,7 +16,6 @@ interface GameSnapshot {
   label: string;
   players: { name: string; total: number }[];
   roundCount: number;
-  lowWins: boolean;
   todayHistory: GameHistoryRecord[];
 }
 
@@ -31,11 +25,8 @@ function GameBlock({ snap }: { snap: GameSnapshot }) {
 
   if (!hasActive && !hasTodayHistory) return null;
 
-  const sorted = hasActive
-    ? [...snap.players].sort((a, b) =>
-        snap.lowWins ? a.total - b.total : b.total - a.total
-      )
-    : [];
+  // Already ranked winner-first by getPlayerTotals.
+  const sorted = snap.players;
 
   return (
     <div style={{ marginBottom: 36 }}>
@@ -159,17 +150,17 @@ export default function Scorebook() {
   useEffect(() => {
     const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-    const snaps = GAMES.map((game) => {
-      const { players, scores } = getStoredData(game.playerKey, game.scoreKey);
-      const totals = getPlayerTotals(players, scores);
-      const history = getHistory(game.historyKey);
+    const snaps = GAME_TYPES.map((game) => {
+      const { playerKey, scoreKey, historyKey } = storageKeys(game);
+      const { players, scores } = getStoredData(playerKey, scoreKey);
+      const totals = getPlayerTotals(players, scores, game.winCondition);
+      const history = getHistory(historyKey);
       const todayHistory = history.filter((r) => r.date === today);
 
       return {
         label: game.label,
         players: totals,
-        roundCount: scores.length,
-        lowWins: game.lowWins,
+        roundCount: scores.filter((round) => round.some((s) => s.trim() !== "")).length,
         todayHistory,
       };
     });

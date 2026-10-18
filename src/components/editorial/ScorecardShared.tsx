@@ -5,15 +5,17 @@ import {
 } from "../../utils/scoreHelpers";
 import { colors, fonts } from "../../styles/tokens";
 import { getOrdinal } from "../../styles/editorialStyles";
+import { WinCondition } from "../../games/gameTypes";
 
 interface StandingsRailProps {
   standings: { name: string; total: number }[];
   gameName: string;
+  winCondition: WinCondition;
   history: GameHistoryRecord[];
   isNarrow?: boolean;
 }
 
-export function StandingsRail({ standings, gameName, history, isNarrow }: StandingsRailProps) {
+export function StandingsRail({ standings, gameName, winCondition, history, isNarrow }: StandingsRailProps) {
   const leader = standings[0];
   const rest = standings.slice(1);
   const seasonStats = getSeasonStats(history);
@@ -50,7 +52,7 @@ export function StandingsRail({ standings, gameName, history, isNarrow }: Standi
           borderBottom: `1px solid ${colors.ink}`,
         }}
       >
-        Fewest points takes the lead.
+        {winCondition === "lowest" ? "Fewest" : "Most"} points takes the lead.
       </div>
 
       {leader ? (
